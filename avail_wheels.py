@@ -72,6 +72,16 @@ class Wheel():
         return isinstance(other, Wheel) and self.__dict__ == other.__dict__
 
 
+def is_compatible(wheel, pythons):
+    """
+    Verify that the wheel python version is compatible with currently supported python versions.
+    """
+    for p in pythons or []:
+        if wheel.python in COMPATIBLE_PYTHON[p]:
+            return True
+    return False
+
+
 def get_wheels(path, archs, name, version, pythons, latest=True):
     """
     Glob the full list of wheels in the wheelhouse on CVMFS.
@@ -86,13 +96,11 @@ def get_wheels(path, archs, name, version, pythons, latest=True):
             for file in files:
                 if re.match(rex, file):
                     wheel = Wheel(f"{arch}/{file}")
-                    for p in pythons:  # Filter the wheels with available pythons version.
-                        if wheel.python in COMPATIBLE_PYTHON[p]:
-                            if wheel.name in wheels:
-                                wheels[wheel.name].append(wheel)
-                            else:
-                                wheels[wheel.name] = [wheel]
-                            break  # Exit pythons loop
+                    if is_compatible(wheel, pythons):
+                        if wheel.name in wheels:
+                            wheels[wheel.name].append(wheel)
+                        else:
+                            wheels[wheel.name] = [wheel]
 
     # Filter versions
     return latest_versions(wheels) if latest else wheels

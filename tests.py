@@ -398,5 +398,22 @@ class Test_parse_args_method(unittest.TestCase):
                     self.parser.parse_args(['--name'])
 
 
+class Test_is_compatible_method(unittest.TestCase):
+    def setUp(self):
+        self.wheel = avail_wheels.Wheel("avx/netCDF4-1.3.1-cp27-cp27mu-linux_x86_64.whl")
+
+    def test_is_compatible_none(self):
+        self.assertFalse(avail_wheels.is_compatible(self.wheel, None))
+
+    def test_is_compatible_true(self):
+        self.assertTrue(avail_wheels.is_compatible(self.wheel, ['2.7']))
+
+    def test_is_compatible_false(self):
+        self.assertFalse(avail_wheels.is_compatible(self.wheel, ['3.5']))
+
+    def test_is_compatible_many(self):
+        self.assertTrue(avail_wheels.is_compatible(self.wheel, avail_wheels.AVAILABLE_PYTHONS))
+
+
 if __name__ == '__main__':
     unittest.main()
