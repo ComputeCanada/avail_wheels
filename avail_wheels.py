@@ -145,7 +145,15 @@ def create_argparser():
     Returns an arguments parser for `avail_wheels` command.
     Note : sys.argv is not parsed yet, must call `.parse_args()`.
     """
-    parser = argparse.ArgumentParser(description="List available wheels patterns from the wheelhouse.",
+
+    description = """
+        List currently available wheels patterns from the wheelhouse. By default, it will:
+        - only show you the latest version of a specific package;
+        - only show you versions that are compatible with the python module (if one loaded), otherwise all python versions will be shown;
+        - only show you versions that are compatible with the CPU architecture that you are currently running on.
+        """
+
+    parser = argparse.ArgumentParser(description=description,
                                      epilog="For more information, see: https://docs.computecanada.ca/wiki/Python#Listing_available_wheels")
 
     version_group = parser.add_mutually_exclusive_group()
