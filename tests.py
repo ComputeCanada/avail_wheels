@@ -320,6 +320,10 @@ class Test_parse_args_method(unittest.TestCase):
         args = self.parser.parse_args([])
         self.assertFalse(self.parser.get_default('all_versions'))
 
+    def test_default_all_pythons(self):
+        args = self.parser.parse_args([])
+        self.assertFalse(self.parser.get_default('all_pythons'))
+
     def test_default_raw(self):
         args = self.parser.parse_args([])
         self.assertFalse(self.parser.get_default('raw'))
@@ -383,6 +387,11 @@ class Test_parse_args_method(unittest.TestCase):
             with self.assertRaises(SystemExit) as cm:
                 with self.assertRaises(ArgumentError):
                     self.parser.parse_args(['--python'])
+
+    def test_all_pythons(self):
+        args = self.parser.parse_args(['--all_pythons'])
+        self.assertIsInstance(args.all_pythons, bool)
+        self.assertTrue(args.all_pythons)
 
     def test_name(self):
         name = "thename"
