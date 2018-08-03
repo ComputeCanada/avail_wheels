@@ -1,8 +1,6 @@
 #!/cvmfs/soft.computecanada.ca/custom/python/envs/avail_wheels/bin/python3
 
-import sys
 import os
-import glob
 import re
 import argparse
 import fnmatch

@@ -1,5 +1,4 @@
 import unittest
-from unittest import mock
 from pathlib import Path
 from importlib import reload
 from io import StringIO
@@ -7,7 +6,6 @@ from argparse import ArgumentError
 from contextlib import redirect_stderr
 import os
 import avail_wheels
-import sys
 
 
 class Test_wheel_class(unittest.TestCase):
@@ -216,7 +214,7 @@ class Test_get_wheels_method(unittest.TestCase):
         ret = avail_wheels.get_wheels(path=self.wheelhouse, archs=archs, pythons=pythons, name=wildname, version="", latest=False)
         self.assertEqual(ret, other)
 
-    def test_get_wheels_wildname_arch_python(self):
+    def test_get_wheels_wildname_arch_python_version(self):
         archs = ['avx2']
         pythons = ['3.6']
         wildname = "*CDF*"
@@ -270,7 +268,7 @@ class Test_parse_args_method(unittest.TestCase):
 
     def test_default_arch(self):
         default_arch = ['generic', self.current_architecture]
-        args = self.parser.parse_args([])
+        self.parser.parse_args([])
         self.assertEqual(avail_wheels.CURRENT_ARCHITECTURE, self.current_architecture)
         self.assertEqual(avail_wheels.ARCHITECTURES, default_arch)
         self.assertEqual(self.parser.get_default('arch'), default_arch)
@@ -279,7 +277,7 @@ class Test_parse_args_method(unittest.TestCase):
         """ Special case (eg on personnal system). """
         self.redoSetUp()  # Need to overwrite setUp
         default_arch = ['generic', self.current_architecture]
-        args = self.parser.parse_args([])
+        self.parser.parse_args([])
 
         self.assertEqual(avail_wheels.CURRENT_ARCHITECTURE, self.current_architecture)
         self.assertEqual(avail_wheels.ARCHITECTURES, default_arch)
@@ -287,7 +285,7 @@ class Test_parse_args_method(unittest.TestCase):
 
     def test_default_python(self):
         default_python = ['3.6']
-        args = self.parser.parse_args([])
+        self.parser.parse_args([])
 
         self.assertEqual(avail_wheels.CURRENT_PYTHON, self.current_python)
         self.assertEqual(self.parser.get_default('python'), default_python)
@@ -295,17 +293,17 @@ class Test_parse_args_method(unittest.TestCase):
     def test_default_nopython(self):
         """ Special case when no modules are loaded or on personnal system. """
         self.redoSetUp()  # Need to overwrite setUp
-        args = self.parser.parse_args([])
+        self.parser.parse_args([])
 
         self.assertEqual(avail_wheels.CURRENT_PYTHON, self.current_python)
         self.assertEqual(self.parser.get_default('python'), avail_wheels.AVAILABLE_PYTHONS)
 
     def test_default_name(self):
-        args = self.parser.parse_args([])
+        self.parser.parse_args([])
         self.assertEqual(self.parser.get_default('name'), "")
 
     def test_default_version(self):
-        args = self.parser.parse_args([])
+        self.parser.parse_args([])
         self.assertEqual(self.parser.get_default('version'), "")
 
     def test_default_house(self):
@@ -313,27 +311,27 @@ class Test_parse_args_method(unittest.TestCase):
         self.assertEqual(self.parser.get_default('house'), avail_wheels.WHEELHOUSE)
 
     def test_default_columns(self):
-        args = self.parser.parse_args([])
+        self.parser.parse_args([])
         self.assertEqual(self.parser.get_default('column'), avail_wheels.HEADERS)
 
     def test_default_all_versions(self):
-        args = self.parser.parse_args([])
+        self.parser.parse_args([])
         self.assertFalse(self.parser.get_default('all_versions'))
 
     def test_default_all_pythons(self):
-        args = self.parser.parse_args([])
+        self.parser.parse_args([])
         self.assertFalse(self.parser.get_default('all_pythons'))
 
     def test_default_all_archs(self):
-        args = self.parser.parse_args([])
+        self.parser.parse_args([])
         self.assertFalse(self.parser.get_default('all_archs'))
 
     def test_default_raw(self):
-        args = self.parser.parse_args([])
+        self.parser.parse_args([])
         self.assertFalse(self.parser.get_default('raw'))
 
     def test_default_mediawiki(self):
-        args = self.parser.parse_args([])
+        self.parser.parse_args([])
         self.assertFalse(self.parser.get_default('mediawiki'))
 
     def test_version(self):
@@ -345,7 +343,7 @@ class Test_parse_args_method(unittest.TestCase):
     def test_version_noarg(self):
         temp_stdout = StringIO()
         with redirect_stderr(temp_stdout):
-            with self.assertRaises(SystemExit) as cm:
+            with self.assertRaises(SystemExit):
                 with self.assertRaises(ArgumentError):
                     self.parser.parse_args(['--version'])
 
@@ -374,7 +372,7 @@ class Test_parse_args_method(unittest.TestCase):
     def test_arch_noarg(self):
         temp_stdout = StringIO()
         with redirect_stderr(temp_stdout):
-            with self.assertRaises(SystemExit) as cm:
+            with self.assertRaises(SystemExit):
                 with self.assertRaises(ArgumentError):
                     self.parser.parse_args(['--arch'])
 
@@ -393,7 +391,7 @@ class Test_parse_args_method(unittest.TestCase):
     def test_python_noarg(self):
         temp_stdout = StringIO()
         with redirect_stderr(temp_stdout):
-            with self.assertRaises(SystemExit) as cm:
+            with self.assertRaises(SystemExit):
                 with self.assertRaises(ArgumentError):
                     self.parser.parse_args(['--python'])
 
@@ -411,7 +409,7 @@ class Test_parse_args_method(unittest.TestCase):
     def test_name_noarg(self):
         temp_stdout = StringIO()
         with redirect_stderr(temp_stdout):
-            with self.assertRaises(SystemExit) as cm:
+            with self.assertRaises(SystemExit):
                 with self.assertRaises(ArgumentError):
                     self.parser.parse_args(['--name'])
 
