@@ -324,6 +324,10 @@ class Test_parse_args_method(unittest.TestCase):
         args = self.parser.parse_args([])
         self.assertFalse(self.parser.get_default('all_pythons'))
 
+    def test_default_all_archs(self):
+        args = self.parser.parse_args([])
+        self.assertFalse(self.parser.get_default('all_archs'))
+
     def test_default_raw(self):
         args = self.parser.parse_args([])
         self.assertFalse(self.parser.get_default('raw'))
@@ -355,6 +359,11 @@ class Test_parse_args_method(unittest.TestCase):
         args = self.parser.parse_args(['--arch', arch[0]])
         self.assertIsInstance(args.arch, list)
         self.assertEqual(args.arch, arch)
+
+    def test_all_archs(self):
+        args = self.parser.parse_args(['--all_archs'])
+        self.assertIsInstance(args.all_archs, bool)
+        self.assertTrue(args.all_archs)
 
     def test_many_arch(self):
         arch = ['avx2', 'avx']

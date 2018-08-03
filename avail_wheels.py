@@ -172,7 +172,10 @@ def create_argparser():
     python_group.add_argument("-p", "--python", choices=AVAILABLE_PYTHONS, nargs='+', default=[CURRENT_PYTHON[:3]] if CURRENT_PYTHON else AVAILABLE_PYTHONS, help="Specify the python versions to look for.")
     python_group.add_argument("--all_pythons", action='store_true', help="Show all pythons of each wheel.")
 
-    parser.add_argument("-a", "--arch", choices=AVAILABLE_ARCHITECTURES, nargs='+', default=ARCHITECTURES, help="Specify the architecture to look for.")
+    arch_group = parser.add_mutually_exclusive_group()
+    arch_group.add_argument("-a", "--arch", choices=AVAILABLE_ARCHITECTURES, nargs='+', default=ARCHITECTURES, help="Specify the architecture to look for.")
+    arch_group.add_argument("--all_archs", action='store_true', help="Show all architectures of each wheel.")
+
     parser.add_argument("-n", "--name", default="", help="Specify the name to look for (case insensitive).")
     parser.add_argument("--house", type=str, default=WHEELHOUSE, help="Specify the directory to walk.")
 
@@ -186,8 +189,11 @@ def create_argparser():
 
 def main():
     args = create_argparser().parse_args()
+
     pythons = args.python if not args.all_pythons else AVAILABLE_PYTHONS
-    wheels = get_wheels(path=args.house, archs=args.arch, name=args.name, version=args.version, pythons=pythons, latest=not args.all_versions)
+    archs = args.arch if not args.all_archs else AVAILABLE_ARCHITECTURES
+
+    wheels = get_wheels(path=args.house, archs=archs, name=args.name, version=args.version, pythons=pythons, latest=not args.all_versions)
 
     if args.raw:
         for wheel_list in wheels.values():
