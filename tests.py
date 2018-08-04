@@ -306,10 +306,6 @@ class Test_parse_args_method(unittest.TestCase):
         self.parser.parse_args([])
         self.assertEqual(self.parser.get_default('version'), "")
 
-    def test_default_house(self):
-        args = self.parser.parse_args([])
-        self.assertEqual(self.parser.get_default('house'), avail_wheels.WHEELHOUSE)
-
     def test_default_columns(self):
         self.parser.parse_args([])
         self.assertEqual(self.parser.get_default('column'), avail_wheels.HEADERS)

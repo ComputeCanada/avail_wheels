@@ -8,18 +8,17 @@ import operator
 from tabulate import tabulate
 from distutils.version import LooseVersion
 
+WHEELHOUSE = os.environ.get("WHEELHOUSE", "/cvmfs/soft.computecanada.ca/custom/python/wheelhouse")
+PYTHONS_DIR = os.environ.get("PYTHONS_DIR", "/cvmfs/soft.computecanada.ca/easybuild/software/2017/Core/python")
+
 CURRENT_ARCHITECTURE = os.environ.get("RSNT_ARCH")
-AVAILABLE_ARCHITECTURES = ['avx', 'avx2', 'sse3', 'generic']
+AVAILABLE_ARCHITECTURES = sorted(os.listdir(WHEELHOUSE))  # Get the available architectures from CVMFS
 ARCHITECTURES = ['generic', CURRENT_ARCHITECTURE]
 
-AVAILABLE_PYTHONS = ["2.7", "3.5", "3.6", "3.7"]
+AVAILABLE_PYTHONS = sorted({pv[:3] for pv in os.listdir(PYTHONS_DIR)})  # Get the available python versions from CVMFS
 CURRENT_PYTHON = os.environ.get("EBVERSIONPYTHON")
-COMPATIBLE_PYTHON = {"2.7": ["py2.py3", "py2", "cp27"],
-                     "3.5": ["py2.py3", "py3", "cp35"],
-                     "3.6": ["py2.py3", "py3", "cp36"],
-                     "3.7": ["py2.py3", "py3", "cp37"]}
-
-WHEELHOUSE = "/cvmfs/soft.computecanada.ca/custom/python/wheelhouse"
+# {'2.7': ['py2.py3', 'py2', 'cp27'], '3.5': ['py2.py3', 'py3', 'cp35'], ...}
+COMPATIBLE_PYTHON = {ap: ['py2.py3', f"py{ap[0]}", f"cp{ap[0]}{ap[2]}"] for ap in AVAILABLE_PYTHONS}
 
 AVAILABLE_HEADERS = ['name', 'version', 'build', 'python', 'abi', 'platform', 'arch']
 HEADERS = ['name', 'version', 'build', 'python', 'arch']
@@ -175,7 +174,6 @@ def create_argparser():
     arch_group.add_argument("--all_archs", action='store_true', help="Show all architectures of each wheel.")
 
     parser.add_argument("-n", "--name", default="", help="Specify the name to look for (case insensitive).")
-    parser.add_argument("--house", type=str, default=WHEELHOUSE, help="Specify the directory to walk.")
 
     display_group = parser.add_mutually_exclusive_group()
     display_group.add_argument("--raw", action='store_true', help="Print raw files names.")
@@ -191,7 +189,7 @@ def main():
     pythons = args.python if not args.all_pythons else AVAILABLE_PYTHONS
     archs = args.arch if not args.all_archs else AVAILABLE_ARCHITECTURES
 
-    wheels = get_wheels(path=args.house, archs=archs, name=args.name, version=args.version, pythons=pythons, latest=not args.all_versions)
+    wheels = get_wheels(WHEELHOUSE, archs=archs, name=args.name, version=args.version, pythons=pythons, latest=not args.all_versions)
 
     if args.raw:
         for wheel_list in wheels.values():
