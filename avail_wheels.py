@@ -151,34 +151,52 @@ def create_argparser():
     Note : sys.argv is not parsed yet, must call `.parse_args()`.
     """
 
-    description = """
-        List currently available wheels patterns from the wheelhouse. By default, it will:
-        - only show you the latest version of a specific package;
-        - only show you versions that are compatible with the python module (if one loaded), otherwise all python versions will be shown;
-        - only show you versions that are compatible with the CPU architecture that you are currently running on.
-        """
+    class HelpFormatter(argparse.RawDescriptionHelpFormatter, argparse.ArgumentDefaultsHelpFormatter):
+        """ Dummy class for RawDescription and ArgumentDefault formatter """
 
-    parser = argparse.ArgumentParser(description=description,
-                                     epilog="For more information, see: https://docs.computecanada.ca/wiki/Python#Listing_available_wheels")
+    description = "List currently available wheels patterns from the wheelhouse. By default, it will:"
+    description += "\n    - only show you the latest version of a specific package;"
+    description += "\n    - only show you versions that are compatible with the python module (if one loaded), otherwise all python versions will be shown;"
+    description += "\n    - only show you versions that are compatible with the CPU architecture that you are currently running on."
 
-    version_group = parser.add_mutually_exclusive_group()
-    version_group.add_argument("-v", "--version", default="", help="Specify the version to look for.")
-    version_group.add_argument("--all_versions", action='store_true', help="Show all versions of each wheel.")
+    epilog = "Examples:\n"
+    epilog += "    avail_wheels --name \"*cdf*\"\n"
+    epilog += "    avail_wheels --name numpy --version 1.15\n"
+    epilog += "    avail_wheels --name numpy --all_versions\n"
+    epilog += "    avail_wheels --name numpy --python 2.7 3.6\n"
+    epilog += "\nFor more information, see: https://docs.computecanada.ca/wiki/Python#Listing_available_wheels"
 
-    python_group = parser.add_mutually_exclusive_group()
-    python_group.add_argument("-p", "--python", choices=AVAILABLE_PYTHONS, nargs='+', default=[CURRENT_PYTHON[:3]] if CURRENT_PYTHON else AVAILABLE_PYTHONS, help="Specify the python versions to look for.")
-    python_group.add_argument("--all_pythons", action='store_true', help="Show all pythons of each wheel.")
-
-    arch_group = parser.add_mutually_exclusive_group()
-    arch_group.add_argument("-a", "--arch", choices=AVAILABLE_ARCHITECTURES, nargs='+', default=ARCHITECTURES, help="Specify the architecture to look for.")
-    arch_group.add_argument("--all_archs", action='store_true', help="Show all architectures of each wheel.")
+    parser = argparse.ArgumentParser(prog="avail_wheels",
+                                     formatter_class=HelpFormatter,
+                                     description=description,
+                                     epilog=epilog)
 
     parser.add_argument("-n", "--name", default="", help="Specify the name to look for (case insensitive).")
 
-    display_group = parser.add_mutually_exclusive_group()
-    display_group.add_argument("--raw", action='store_true', help="Print raw files names.")
-    display_group.add_argument("--mediawiki", action='store_true', help="Print a mediawiki table.")
-    display_group.add_argument("--column", choices=AVAILABLE_HEADERS, nargs='+', default=HEADERS, help="Specify and order the columns to display.")
+    version_group = parser.add_argument_group('version')
+    parser.add_mutually_exclusive_group()._group_actions.extend([
+        version_group.add_argument("-v", "--version", default="", help="Specify the version to look for."),
+        version_group.add_argument("--all_versions", action='store_true', help="Show all versions of each wheel."),
+    ])
+
+    python_group = parser.add_argument_group('python')
+    parser.add_mutually_exclusive_group()._group_actions.extend([
+        python_group.add_argument("-p", "--python", choices=AVAILABLE_PYTHONS, nargs='+', default=[CURRENT_PYTHON[:3]] if CURRENT_PYTHON else AVAILABLE_PYTHONS, help="Specify the python versions to look for."),
+        python_group.add_argument("--all_pythons", action='store_true', help="Show all pythons of each wheel."),
+    ])
+
+    arch_group = parser.add_argument_group('architecture')
+    parser.add_mutually_exclusive_group()._group_actions.extend([
+        arch_group.add_argument("-a", "--arch", choices=AVAILABLE_ARCHITECTURES, nargs='+', default=ARCHITECTURES, help="Specify the architecture to look for."),
+        arch_group.add_argument("--all_archs", action='store_true', help="Show all architectures of each wheel.")
+    ])
+
+    display_group = parser.add_argument_group('display')
+    parser.add_mutually_exclusive_group()._group_actions.extend([
+        display_group.add_argument("--raw", action='store_true', help="Print raw files names."),
+        display_group.add_argument("--mediawiki", action='store_true', help="Print a mediawiki table."),
+        display_group.add_argument("--column", choices=AVAILABLE_HEADERS, nargs='+', default=HEADERS, help="Specify and order the columns to display."),
+    ])
 
     return parser
 
