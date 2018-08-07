@@ -4,7 +4,9 @@ from importlib import reload
 from io import StringIO
 from argparse import ArgumentError
 from contextlib import redirect_stderr
+from fnmatch import translate
 import os
+import re
 import avail_wheels
 
 
@@ -170,7 +172,7 @@ class Test_get_wheels_method(unittest.TestCase):
                 for file in files:
                     other[wheel_name].append(avail_wheels.Wheel(f"{arch}/{file}"))
 
-        ret = avail_wheels.get_wheels(path=self.wheelhouse, archs=avail_wheels.AVAILABLE_ARCHITECTURES, pythons=avail_wheels.AVAILABLE_PYTHONS, name="", version="", latest=False)
+        ret = avail_wheels.get_wheels(path=self.wheelhouse, archs=avail_wheels.AVAILABLE_ARCHITECTURES, pythons=avail_wheels.AVAILABLE_PYTHONS, names=None, version="", latest=False)
         self.assertEqual(ret, other)
 
     def test_get_wheels_arch_all_pythons(self):
@@ -181,7 +183,7 @@ class Test_get_wheels_method(unittest.TestCase):
                 for file in files:
                     other[wheel_name].append(avail_wheels.Wheel(f"{arch}/{file}"))
 
-        ret = avail_wheels.get_wheels(path=self.wheelhouse, archs=archs, pythons=avail_wheels.AVAILABLE_PYTHONS, name="", version="", latest=False)
+        ret = avail_wheels.get_wheels(path=self.wheelhouse, archs=archs, pythons=avail_wheels.AVAILABLE_PYTHONS, names=None, version="", latest=False)
         self.assertEqual(ret, other)
 
     def test_get_wheels_arch_python(self):
@@ -191,7 +193,7 @@ class Test_get_wheels_method(unittest.TestCase):
                              avail_wheels.Wheel(f"{archs[0]}/{self.raw_filenames['netCDF4'][3]}")],
                  'torch_cpu': [avail_wheels.Wheel(f"{archs[0]}/{self.raw_filenames['torch_cpu'][0]}")]}
 
-        ret = avail_wheels.get_wheels(path=self.wheelhouse, archs=archs, pythons=pythons, name="", version="", latest=False)
+        ret = avail_wheels.get_wheels(path=self.wheelhouse, archs=archs, pythons=pythons, names=None, version="", latest=False)
         self.assertEqual(ret, other)
 
     def test_get_wheels_exactname_arch_python(self):
@@ -201,7 +203,7 @@ class Test_get_wheels_method(unittest.TestCase):
         other = {'netCDF4': [avail_wheels.Wheel(f"{archs[0]}/{self.raw_filenames['netCDF4'][2]}"),
                              avail_wheels.Wheel(f"{archs[0]}/{self.raw_filenames['netCDF4'][3]}")]}
 
-        ret = avail_wheels.get_wheels(path=self.wheelhouse, archs=archs, pythons=pythons, name=exactname, version="", latest=False)
+        ret = avail_wheels.get_wheels(path=self.wheelhouse, archs=archs, pythons=pythons, names=[exactname], version="", latest=False)
         self.assertEqual(ret, other)
 
     def test_get_wheels_wildname_arch_python(self):
@@ -211,7 +213,7 @@ class Test_get_wheels_method(unittest.TestCase):
         other = {'netCDF4': [avail_wheels.Wheel(f"{archs[0]}/{self.raw_filenames['netCDF4'][2]}"),
                              avail_wheels.Wheel(f"{archs[0]}/{self.raw_filenames['netCDF4'][3]}")]}
 
-        ret = avail_wheels.get_wheels(path=self.wheelhouse, archs=archs, pythons=pythons, name=wildname, version="", latest=False)
+        ret = avail_wheels.get_wheels(path=self.wheelhouse, archs=archs, pythons=pythons, names=[wildname], version="", latest=False)
         self.assertEqual(ret, other)
 
     def test_get_wheels_wildname_arch_python_version(self):
@@ -221,7 +223,7 @@ class Test_get_wheels_method(unittest.TestCase):
         version = '1.3.1'
         other = {'netCDF4': [avail_wheels.Wheel(f"{archs[0]}/{self.raw_filenames['netCDF4'][3]}")]}
 
-        ret = avail_wheels.get_wheels(path=self.wheelhouse, archs=archs, pythons=pythons, name=wildname, version=version, latest=False)
+        ret = avail_wheels.get_wheels(path=self.wheelhouse, archs=archs, pythons=pythons, names=[wildname], version=version, latest=False)
         self.assertEqual(ret, other)
 
     def test_get_wheels_wildversion_wildname_arch_python(self):
@@ -231,7 +233,7 @@ class Test_get_wheels_method(unittest.TestCase):
         version = '1.2.*'
         other = {'netCDF4': [avail_wheels.Wheel(f"{archs[0]}/{self.raw_filenames['netCDF4'][2]}")]}
 
-        ret = avail_wheels.get_wheels(path=self.wheelhouse, archs=archs, pythons=pythons, name=wildname, version=version, latest=False)
+        ret = avail_wheels.get_wheels(path=self.wheelhouse, archs=archs, pythons=pythons, names=[wildname], version=version, latest=False)
         self.assertEqual(ret, other)
 
     def test_get_wheels_wrongversion_wildname_arch_python(self):
@@ -241,7 +243,7 @@ class Test_get_wheels_method(unittest.TestCase):
         version = '2.3'
         other = {}
 
-        ret = avail_wheels.get_wheels(path=self.wheelhouse, archs=archs, pythons=pythons, name=wildname, version=version, latest=False)
+        ret = avail_wheels.get_wheels(path=self.wheelhouse, archs=archs, pythons=pythons, names=[wildname], version=version, latest=False)
         self.assertEqual(ret, other)
 
 
@@ -300,7 +302,7 @@ class Test_parse_args_method(unittest.TestCase):
 
     def test_default_name(self):
         self.parser.parse_args([])
-        self.assertEqual(self.parser.get_default('name'), "")
+        self.assertEqual(self.parser.get_default('name'), None)
 
     def test_default_version(self):
         self.parser.parse_args([])
@@ -397,10 +399,16 @@ class Test_parse_args_method(unittest.TestCase):
         self.assertTrue(args.all_pythons)
 
     def test_name(self):
-        name = "thename"
-        args = self.parser.parse_args(['--name', name])
-        self.assertIsInstance(args.name, str)
-        self.assertEqual(args.name, name)
+        names = ["thename"]
+        args = self.parser.parse_args(['--name', names[0]])
+        self.assertIsInstance(args.name, list)
+        self.assertEqual(args.name, names)
+
+    def test_names(self):
+        names = ["thename", "thename"]
+        args = self.parser.parse_args(['--name', names[0], names[1]])
+        self.assertIsInstance(args.name, list)
+        self.assertEqual(args.name, names)
 
     def test_name_noarg(self):
         temp_stdout = StringIO()
@@ -408,6 +416,23 @@ class Test_parse_args_method(unittest.TestCase):
             with self.assertRaises(SystemExit):
                 with self.assertRaises(ArgumentError):
                     self.parser.parse_args(['--name'])
+
+    def test_wheel(self):
+        wheels = ["thename"]
+        args = self.parser.parse_args([wheels[0]])
+        self.assertIsInstance(args.wheel, list)
+        self.assertEqual(args.wheel, wheels)
+
+    def test_wheels(self):
+        wheels = ["thename", "thename"]
+        args = self.parser.parse_args([*wheels])
+        self.assertIsInstance(args.wheel, list)
+        self.assertEqual(args.wheel, wheels)
+
+    def test_wheel_noarg(self):
+        args = self.parser.parse_args([])
+        self.assertIsInstance(args.wheel, list)
+        self.assertEqual(args.wheel, [])
 
 
 class Test_is_compatible_method(unittest.TestCase):
@@ -425,6 +450,46 @@ class Test_is_compatible_method(unittest.TestCase):
 
     def test_is_compatible_many(self):
         self.assertTrue(avail_wheels.is_compatible(self.wheel, avail_wheels.AVAILABLE_PYTHONS))
+
+
+class Test_match_file(unittest.TestCase):
+    def setUp(self):
+        self.wheels = ["netCDF4-1.3.1-cp27-cp27mu-linux_x86_64.whl", "torch_cpu-0.4.1-cp27-cp27mu-linux_x86_64.whl"]
+        self.rexes = [re.compile(translate(self.wheels[0])), re.compile(translate(self.wheels[1]))]
+
+    def test_match_file_true(self):
+        for wheel in self.wheels:
+            self.assertTrue(avail_wheels.match_file(wheel, self.rexes))
+
+    def test_match_file_false(self):
+        for wheel in self.wheels:
+            self.assertFalse(avail_wheels.match_file("None", self.rexes))
+
+
+class Test_get_rexes(unittest.TestCase):
+    def setUp(self):
+        pass
+
+    def rexes_compile(self, patterns):
+        return [re.compile(translate(pattern), re.IGNORECASE) for pattern in patterns]
+
+    def test_get_rexes_none_none(self):
+        self.assertEqual(avail_wheels.get_rexes(None, None), self.rexes_compile(patterns=["*.whl"]))
+
+    def test_get_rexes_none_version(self):
+        self.assertEqual(avail_wheels.get_rexes(None, '1.2'), self.rexes_compile(patterns=["*1.2*.whl"]))
+
+    def test_get_rexes_name_none(self):
+        self.assertEqual(avail_wheels.get_rexes(["numpy"], None), self.rexes_compile(patterns=["numpy-*.whl"]))
+
+    def test_get_rexes_name_version(self):
+        self.assertEqual(avail_wheels.get_rexes(["numpy"], "1.2"), self.rexes_compile(patterns=["numpy-1.2*.whl"]))
+
+    def test_get_rexes_names_none(self):
+        self.assertEqual(avail_wheels.get_rexes(["numpy", "torch_cpu"], None), self.rexes_compile(patterns=["numpy-*.whl", "torch_cpu-*.whl"]))
+
+    def test_get_rexes_names_version(self):
+        self.assertEqual(avail_wheels.get_rexes(["numpy", "torch_cpu"], "1.2"), self.rexes_compile(patterns=["numpy-1.2*.whl", "torch_cpu-1.2*.whl"]))
 
 
 if __name__ == '__main__':

@@ -79,19 +79,45 @@ def is_compatible(wheel, pythons):
     return False
 
 
-def get_wheels(path, archs, name, version, pythons, latest=True):
+def match_file(file, rexes):
+    """ Match file with one or more regular expressions. """
+    for rex in rexes:
+        if re.match(rex, file):
+            return True
+    return False
+
+
+def get_rexes(names, version):
+    """
+    Returns the patterns to match file names (case insensitive).
+    Supports exact and globbing matching of name.
+    """
+    extension = ".whl"
+    patterns = [f"*{extension}"]
+
+    if names and version:
+        patterns = [f"{name}-{version}*{extension}" for name in names]
+    elif not names and version:
+        patterns = [f"*{version}*{extension}"]
+    elif names and not version:
+        patterns = [f"{name}-*{extension}" for name in names]
+
+    return [re.compile(fnmatch.translate(pattern), re.IGNORECASE) for pattern in patterns]
+
+
+def get_wheels(path, archs, names, version, pythons, latest=True):
     """
     Glob the full list of wheels in the wheelhouse on CVMFS.
     Can also be filterd on arch, name, version or python.
     Return a dict of wheel name and list of tags.
     """
     wheels = {}
-    rex = re.compile(fnmatch.translate(f"{name}*{version}*.whl"), re.IGNORECASE)
+    rexes = get_rexes(names, version)
 
     for arch in archs:
         for _, _, files in os.walk(f"{path}/{arch}"):
             for file in files:
-                if re.match(rex, file):
+                if match_file(file, rexes):
                     wheel = Wheel(f"{arch}/{file}")
                     if is_compatible(wheel, pythons):
                         if wheel.name in wheels:
@@ -171,7 +197,8 @@ def create_argparser():
                                      description=description,
                                      epilog=epilog)
 
-    parser.add_argument("-n", "--name", default="", help="Specify the name to look for (case insensitive).")
+    parser.add_argument("wheel", nargs="*", help="Specify the name to look for (case insensitive).")
+    parser.add_argument("-n", "--name", nargs="+", default=None, help="Specify the name to look for (case insensitive).")
 
     version_group = parser.add_argument_group('version')
     parser.add_mutually_exclusive_group()._group_actions.extend([
@@ -204,10 +231,13 @@ def create_argparser():
 def main():
     args = create_argparser().parse_args()
 
+    if args.name:
+        args.wheel.extend(args.name)
+
     pythons = args.python if not args.all_pythons else AVAILABLE_PYTHONS
     archs = args.arch if not args.all_archs else AVAILABLE_ARCHITECTURES
 
-    wheels = get_wheels(WHEELHOUSE, archs=archs, name=args.name, version=args.version, pythons=pythons, latest=not args.all_versions)
+    wheels = get_wheels(WHEELHOUSE, archs=archs, names=args.wheel, version=args.version, pythons=pythons, latest=not args.all_versions)
 
     if args.raw:
         for wheel_list in wheels.values():
