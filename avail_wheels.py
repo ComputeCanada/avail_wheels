@@ -225,7 +225,9 @@ def create_argparser():
 def main():
     args = create_argparser().parse_args()
 
-    if args.name:
+    if args.name and args.wheel == ['*']:
+        args.wheel = args.name
+    elif args.name:
         args.wheel.extend(args.name)
 
     pythons = args.python if not args.all_pythons else AVAILABLE_PYTHONS
