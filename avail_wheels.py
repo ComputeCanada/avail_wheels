@@ -190,7 +190,7 @@ def create_argparser():
                                      description=description,
                                      epilog=epilog)
 
-    parser.add_argument("wheel", nargs="*", help="Specify the name to look for (case insensitive).")
+    parser.add_argument("wheel", nargs="*", default=['*'], help="Specify the name to look for (case insensitive).")
     parser.add_argument("-n", "--name", nargs="+", default=None, help="Specify the name to look for (case insensitive).")
 
     version_group = parser.add_argument_group('version')

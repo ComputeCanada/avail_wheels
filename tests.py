@@ -305,6 +305,10 @@ class Test_parse_args_method(unittest.TestCase):
         self.parser.parse_args([])
         self.assertEqual(self.parser.get_default('name'), None)
 
+    def test_default_wheel(self):
+        self.parser.parse_args([])
+        self.assertEqual(self.parser.get_default('wheel'), ['*'])
+
     def test_default_version(self):
         self.parser.parse_args([])
         self.assertEqual(self.parser.get_default('version'), ["*"])
@@ -433,7 +437,7 @@ class Test_parse_args_method(unittest.TestCase):
     def test_wheel_noarg(self):
         args = self.parser.parse_args([])
         self.assertIsInstance(args.wheel, list)
-        self.assertEqual(args.wheel, [])
+        self.assertEqual(args.wheel, ['*'])
 
 
 class Test_is_compatible_method(unittest.TestCase):
