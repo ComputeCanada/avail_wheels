@@ -92,10 +92,10 @@ def get_rexes(names_versions):
     """
     Returns the patterns to match file names (case insensitive).
     Supports exact matching and globbing of name.
-    Supports globbing of version.
+    Supports exact matching and globbing of version.
     pattern: name-version*.whl
     """
-    return [re.compile(fnmatch.translate(f"{name}-{version}*.whl"), re.IGNORECASE) for name, version in names_versions]
+    return [re.compile(fnmatch.translate(f"{name}-{version}-*.whl"), re.IGNORECASE) for name, version in names_versions]
 
 
 def get_wheels(path, archs, names_versions, pythons, latest=True):
