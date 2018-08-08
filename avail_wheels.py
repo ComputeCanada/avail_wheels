@@ -236,8 +236,9 @@ def main():
     pythons = args.python if not args.all_pythons else AVAILABLE_PYTHONS
     archs = args.arch if not args.all_archs else AVAILABLE_ARCHITECTURES
     names_versions = product(args.wheel, args.version)
+    latest = not args.all_versions and args.version == DEFAULT_STAR_ARG
 
-    wheels = get_wheels(WHEELHOUSE, archs=archs, names_versions=names_versions, pythons=pythons, latest=not args.all_versions)
+    wheels = get_wheels(WHEELHOUSE, archs=archs, names_versions=names_versions, pythons=pythons, latest=latest)
 
     if args.raw:
         for wheel_list in wheels.values():
