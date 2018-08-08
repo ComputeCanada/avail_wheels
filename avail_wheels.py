@@ -7,6 +7,7 @@ import fnmatch
 import operator
 from tabulate import tabulate
 from distutils.version import LooseVersion
+from itertools import product
 
 WHEELHOUSE = os.environ.get("WHEELHOUSE", "/cvmfs/soft.computecanada.ca/custom/python/wheelhouse")
 PYTHONS_DIR = os.environ.get("PYTHONS_DIR", "/cvmfs/soft.computecanada.ca/easybuild/software/2017/Core/python")
@@ -87,32 +88,24 @@ def match_file(file, rexes):
     return False
 
 
-def get_rexes(names, version):
+def get_rexes(names_versions):
     """
     Returns the patterns to match file names (case insensitive).
-    Supports exact and globbing matching of name.
+    Supports exact matching and globbing of name.
+    Supports globbing of version.
+    pattern: name-version*.whl
     """
-    extension = ".whl"
-    patterns = [f"*{extension}"]
-
-    if names and version:
-        patterns = [f"{name}-{version}*{extension}" for name in names]
-    elif not names and version:
-        patterns = [f"*{version}*{extension}"]
-    elif names and not version:
-        patterns = [f"{name}-*{extension}" for name in names]
-
-    return [re.compile(fnmatch.translate(pattern), re.IGNORECASE) for pattern in patterns]
+    return [re.compile(fnmatch.translate(f"{name}-{version}*.whl"), re.IGNORECASE) for name, version in names_versions]
 
 
-def get_wheels(path, archs, names, version, pythons, latest=True):
+def get_wheels(path, archs, names_versions, pythons, latest=True):
     """
     Glob the full list of wheels in the wheelhouse on CVMFS.
     Can also be filterd on arch, name, version or python.
     Return a dict of wheel name and list of tags.
     """
     wheels = {}
-    rexes = get_rexes(names, version)
+    rexes = get_rexes(names_versions)
 
     for arch in archs:
         for _, _, files in os.walk(f"{path}/{arch}"):
@@ -202,7 +195,7 @@ def create_argparser():
 
     version_group = parser.add_argument_group('version')
     parser.add_mutually_exclusive_group()._group_actions.extend([
-        version_group.add_argument("-v", "--version", default="", help="Specify the version to look for."),
+        version_group.add_argument("-v", "--version", nargs="+", default=['*'], help="Specify the version to look for."),
         version_group.add_argument("--all_versions", action='store_true', help="Show all versions of each wheel."),
     ])
 
@@ -236,8 +229,9 @@ def main():
 
     pythons = args.python if not args.all_pythons else AVAILABLE_PYTHONS
     archs = args.arch if not args.all_archs else AVAILABLE_ARCHITECTURES
+    names_versions = product(args.wheel, args.version)
 
-    wheels = get_wheels(WHEELHOUSE, archs=archs, names=args.wheel, version=args.version, pythons=pythons, latest=not args.all_versions)
+    wheels = get_wheels(WHEELHOUSE, archs=archs, names_versions=names_versions, pythons=pythons, latest=not args.all_versions)
 
     if args.raw:
         for wheel_list in wheels.values():
