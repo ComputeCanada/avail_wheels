@@ -179,10 +179,11 @@ def create_argparser():
     description += "\n    - only show you versions that are compatible with the CPU architecture that you are currently running on."
 
     epilog = "Examples:\n"
-    epilog += "    avail_wheels --name \"*cdf*\"\n"
-    epilog += "    avail_wheels --name numpy --version 1.15\n"
-    epilog += "    avail_wheels --name numpy --all_versions\n"
-    epilog += "    avail_wheels --name numpy --python 2.7 3.6\n"
+    epilog += "    avail_wheels \"*cdf*\"\n"
+    epilog += "    avail_wheels numpy --version \"1.15*\"\n"
+    epilog += "    avail_wheels numpy --all_versions\n"
+    epilog += "    avail_wheels numpy torch_cpu --version \"1.15*\" 0.4.0\n"
+    epilog += "    avail_wheels numpy --python 2.7 3.6\n"
     epilog += "\nFor more information, see: https://docs.computecanada.ca/wiki/Python#Listing_available_wheels"
 
     parser = argparse.ArgumentParser(prog="avail_wheels",
