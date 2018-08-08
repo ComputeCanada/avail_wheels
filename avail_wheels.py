@@ -24,6 +24,8 @@ COMPATIBLE_PYTHON = {ap: ['py2.py3', f"py{ap[0]}", f"cp{ap[0]}{ap[2]}"] for ap i
 AVAILABLE_HEADERS = ['name', 'version', 'build', 'python', 'abi', 'platform', 'arch']
 HEADERS = ['name', 'version', 'build', 'python', 'arch']
 
+DEFAULT_STAR_ARG = ['*']
+
 
 class Wheel():
     """
@@ -191,12 +193,12 @@ def create_argparser():
                                      description=description,
                                      epilog=epilog)
 
-    parser.add_argument("wheel", nargs="*", default=['*'], help="Specify the name to look for (case insensitive).")
+    parser.add_argument("wheel", nargs="*", default=DEFAULT_STAR_ARG, help="Specify the name to look for (case insensitive).")
     parser.add_argument("-n", "--name", nargs="+", default=None, help="Specify the name to look for (case insensitive).")
 
     version_group = parser.add_argument_group('version')
     parser.add_mutually_exclusive_group()._group_actions.extend([
-        version_group.add_argument("-v", "--version", nargs="+", default=['*'], help="Specify the version to look for."),
+        version_group.add_argument("-v", "--version", nargs="+", default=DEFAULT_STAR_ARG, help="Specify the version to look for."),
         version_group.add_argument("--all_versions", action='store_true', help="Show all versions of each wheel."),
     ])
 
@@ -225,7 +227,8 @@ def create_argparser():
 def main():
     args = create_argparser().parse_args()
 
-    if args.name and args.wheel == ['*']:
+    # Add name valueS to the positionnal wheel argument
+    if args.name and args.wheel == DEFAULT_STAR_ARG:
         args.wheel = args.name
     elif args.name:
         args.wheel.extend(args.name)
