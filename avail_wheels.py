@@ -16,7 +16,7 @@ CURRENT_ARCHITECTURE = os.environ.get("RSNT_ARCH")
 AVAILABLE_ARCHITECTURES = sorted(os.listdir(WHEELHOUSE))  # Get the available architectures from CVMFS
 ARCHITECTURES = ['generic', CURRENT_ARCHITECTURE]
 
-AVAILABLE_PYTHONS = sorted({pv[:3] for pv in os.listdir(PYTHONS_DIR)})  # Get the available python versions from CVMFS
+AVAILABLE_PYTHONS = sorted({pv[:3] for pv in os.listdir(PYTHONS_DIR) if re.match(r"\d+.\d+(.\d+)?", pv)})  # Get the available python versions from CVMFS
 CURRENT_PYTHON = os.environ.get("EBVERSIONPYTHON")
 # {'2.7': ['py2.py3', 'py2', 'cp27'], '3.5': ['py2.py3', 'py3', 'cp35'], ...}
 COMPATIBLE_PYTHON = {ap: ['py2.py3', f"py{ap[0]}", f"cp{ap[0]}{ap[2]}"] for ap in AVAILABLE_PYTHONS}
