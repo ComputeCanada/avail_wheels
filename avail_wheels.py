@@ -215,11 +215,9 @@ def create_argparser():
     ])
 
     display_group = parser.add_argument_group('display')
-    parser.add_mutually_exclusive_group()._group_actions.extend([
-        display_group.add_argument("--raw", action='store_true', help="Print raw files names."),
-        display_group.add_argument("--mediawiki", action='store_true', help="Print a mediawiki table."),
-        display_group.add_argument("--column", choices=AVAILABLE_HEADERS, nargs='+', default=HEADERS, help="Specify and order the columns to display."),
-    ])
+    display_group.add_argument("--mediawiki", action='store_true', help="Print a mediawiki table."),
+    display_group.add_argument("--raw", action='store_true', help="Print raw files names. Has precedence over other arguments of this group."),
+    display_group.add_argument("--column", choices=AVAILABLE_HEADERS, nargs='+', default=HEADERS, help="Specify and order the columns to display."),
 
     return parser
 
