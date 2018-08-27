@@ -34,10 +34,10 @@ class Test_wheel_class(unittest.TestCase):
                      "avx/tensorflow_cpu-1.6.0+computecanada-cp36-cp36m-linux_x86_64.whl",
                      "generic/backports.functools_lru_cache-1.4-py2.py3-none-any.whl",
                      "sse3/Shapely-1.6.2.post1-cp35-cp35m-linux_x86_64.whl"]
-        tags = {filenames[0]: {'arch': 'avx2', 'name': 'netCDF4', 'version': '1.3.1', 'build': None, 'python': 'cp36', 'abi': 'cp36m', 'platform': 'linux_x86_64'},
+        tags = {filenames[0]: {'arch': 'avx2', 'name': 'netCDF4', 'version': '1.3.1', 'build': '', 'python': 'cp36', 'abi': 'cp36m', 'platform': 'linux_x86_64'},
                 filenames[1]: {'arch': 'avx', 'name': 'tensorflow_cpu', 'version': '1.6.0', 'build': "computecanada", 'python': 'cp36', 'abi': 'cp36m', 'platform': 'linux_x86_64'},
-                filenames[2]: {'arch': 'generic', 'name': 'backports.functools_lru_cache', 'version': '1.4', 'build': None, 'python': 'py2.py3', 'abi': 'none', 'platform': "any"},
-                filenames[3]: {'arch': 'sse3', 'name': 'Shapely', 'version': '1.6.2.post1', 'build': None, 'python': 'cp35', 'abi': 'cp35m', 'platform': "linux_x86_64"}}
+                filenames[2]: {'arch': 'generic', 'name': 'backports.functools_lru_cache', 'version': '1.4', 'build': '', 'python': 'py2.py3', 'abi': 'none', 'platform': "any"},
+                filenames[3]: {'arch': 'sse3', 'name': 'Shapely', 'version': '1.6.2.post1', 'build': '', 'python': 'cp35', 'abi': 'cp35m', 'platform': "linux_x86_64"}}
 
         for file in filenames:
             wheel = avail_wheels.Wheel(file)
@@ -119,17 +119,17 @@ class Test_sort_method(unittest.TestCase):
 
         self.wheels['netCDF4'].reverse()
 
-        self.output = [['netCDF4', '1.4.0', None, 'cp27', 'generic'],
-                       ['netCDF4', '1.3.1', None, 'cp36', 'sse3'],
-                       ['netCDF4', '1.3.1', None, 'cp35', 'sse3'],
-                       ['netCDF4', '1.3.1', None, 'cp27', 'sse3'],
-                       ['netCDF4', '1.3.1', None, 'cp36', 'avx2'],
-                       ['netCDF4', '1.3.1', None, 'cp35', 'avx2'],
-                       ['netCDF4', '1.3.1', None, 'cp27', 'avx2'],
-                       ['netCDF4', '1.3.1', None, 'cp36', 'avx'],
-                       ['netCDF4', '1.3.1', None, 'cp35', 'avx'],
-                       ['netCDF4', '1.3.1', None, 'cp27', 'avx'],
-                       ['netCDF4', '1.2.8', None, 'cp27', 'generic']]
+        self.output = [['netCDF4', '1.4.0', '', 'cp27', 'generic'],
+                       ['netCDF4', '1.3.1', '', 'cp36', 'sse3'],
+                       ['netCDF4', '1.3.1', '', 'cp35', 'sse3'],
+                       ['netCDF4', '1.3.1', '', 'cp27', 'sse3'],
+                       ['netCDF4', '1.3.1', '', 'cp36', 'avx2'],
+                       ['netCDF4', '1.3.1', '', 'cp35', 'avx2'],
+                       ['netCDF4', '1.3.1', '', 'cp27', 'avx2'],
+                       ['netCDF4', '1.3.1', '', 'cp36', 'avx'],
+                       ['netCDF4', '1.3.1', '', 'cp35', 'avx'],
+                       ['netCDF4', '1.3.1', '', 'cp27', 'avx'],
+                       ['netCDF4', '1.2.8', '', 'cp27', 'generic']]
 
     def test_sort_ret(self):
         ret = avail_wheels.sort({}, None)
@@ -138,6 +138,10 @@ class Test_sort_method(unittest.TestCase):
     def test_sort_columns(self):
         ret = avail_wheels.sort(self.wheels, avail_wheels.HEADERS)
         self.assertEqual(ret, self.output)
+
+    def test_sort_condense(self):
+        ret = avail_wheels.sort(self.wheels, avail_wheels.HEADERS, True)
+        self.assertEqual(ret, [["netCDF4", "1.4.0, 1.3.1, 1.2.8", '', "cp36, cp35, cp27", "sse3, generic, avx2, avx"]])
 
 
 class Test_get_wheels_method(unittest.TestCase):

@@ -55,7 +55,7 @@ class Wheel():
             self.arch = m.group('arch')
             self.name = m.group('name')
             self.version = m.group('version')
-            self.build = m.group('build')
+            self.build = m.group('build') or ""
             self.python = m.group('python')
             self.abi = m.group('abi')
             self.platform = m.group('platform')
@@ -144,12 +144,13 @@ def latest_versions(wheels):
     return latests
 
 
-def sort(wheels, columns):
+def sort(wheels, columns, condense=False):
     """
     Transforms dict of wheels to a list of lists
     where the columns are the wheel tags.
     """
     ret = []
+    sep = ", "
 
     # Sort in-place, by name insensitively asc, then by version desc, then by arch desc, then by python desc
     # Since the sort is stable and Timsort can benefit from previous sort, this is fast.
@@ -160,8 +161,23 @@ def sort(wheels, columns):
         wheel_list.sort(key=operator.attrgetter('arch'), reverse=True)
         wheel_list.sort(key=operator.methodcaller('loose_version'), reverse=True)
 
-        for wheel in wheel_list:
-            ret.append([getattr(wheel, column) for column in columns])
+        # Condense wheel information on one line.
+        # For every column, every wheel, insert the tag into a uniq set, then join tag values and re-sort.
+        # Otherwise, get the columns.
+        if condense:
+            row = []
+            dwheel = {}
+            for column in columns:
+                dwheel[column] = set()
+
+                for wheel in wheel_list:
+                    dwheel[column].add(getattr(wheel, column))
+
+                row.append(sep.join(sorted(dwheel.get(column), reverse=True)))
+
+            ret.append(row)
+        else:
+            ret.extend([[getattr(wheel, column) for column in columns] for wheel in wheel_list])
 
     return ret
 
@@ -218,6 +234,7 @@ def create_argparser():
     display_group.add_argument("--mediawiki", action='store_true', help="Print a mediawiki table."),
     display_group.add_argument("--raw", action='store_true', help="Print raw files names. Has precedence over other arguments of this group."),
     display_group.add_argument("--column", choices=AVAILABLE_HEADERS, nargs='+', default=HEADERS, help="Specify and order the columns to display."),
+    display_group.add_argument("--condense", action='store_true', help="Condense wheel information into one line.")
 
     return parser
 
@@ -242,7 +259,7 @@ def main():
         for wheel_list in wheels.values():
             print(*wheel_list, sep='\n')
     else:
-        wheels = sort(wheels, args.column)
+        wheels = sort(wheels, args.column, args.condense)
         print(tabulate(wheels, headers=args.column, tablefmt="mediawiki" if args.mediawiki else "simple"))
 
 
