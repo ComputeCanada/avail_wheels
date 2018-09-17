@@ -115,11 +115,20 @@ class Test_sort_method(unittest.TestCase):
                                    avail_wheels.Wheel("sse3/netCDF4-1.3.1-cp35-cp35m-linux_x86_64.whl"),
                                    avail_wheels.Wheel("sse3/netCDF4-1.3.1-cp36-cp36m-linux_x86_64.whl"),
                                    avail_wheels.Wheel("generic/netCDF4-1.4.0-cp27-cp27mu-linux_x86_64.whl"),
-                                   avail_wheels.Wheel("generic/netCDF4-1.2.8-cp27-cp27mu-linux_x86_64.whl")]}
+                                   avail_wheels.Wheel("generic/netCDF4-1.2.8-cp27-cp27mu-linux_x86_64.whl")],
+
+                       "botocore": [avail_wheels.Wheel("generic/botocore-1.10.63-py2.py3-none-any.whl"),
+                                    avail_wheels.Wheel("generic/botocore-1.9.5-py2.py3-none-any.whl"),
+                                    avail_wheels.Wheel("generic/botocore-1.10.57-py2.py3-none-any.whl"),
+                                    avail_wheels.Wheel("generic/botocore-1.9.11-py2.py3-none-any.whl")]}
 
         self.wheels['netCDF4'].reverse()
 
-        self.output = [['netCDF4', '1.4.0', '', 'cp27', 'generic'],
+        self.output = [['botocore', '1.10.63', '', 'py2.py3', 'generic'],
+                       ['botocore', '1.10.57', '', 'py2.py3', 'generic'],
+                       ['botocore', '1.9.11', '', 'py2.py3', 'generic'],
+                       ['botocore', '1.9.5', '', 'py2.py3', 'generic'],
+                       ['netCDF4', '1.4.0', '', 'cp27', 'generic'],
                        ['netCDF4', '1.3.1', '', 'cp36', 'sse3'],
                        ['netCDF4', '1.3.1', '', 'cp35', 'sse3'],
                        ['netCDF4', '1.3.1', '', 'cp27', 'sse3'],
@@ -131,6 +140,11 @@ class Test_sort_method(unittest.TestCase):
                        ['netCDF4', '1.3.1', '', 'cp27', 'avx'],
                        ['netCDF4', '1.2.8', '', 'cp27', 'generic']]
 
+        self.condensed_output = [
+            ["botocore", "1.10.63, 1.10.57, 1.9.11, 1.9.5", '', "py2.py3", "generic"],
+            ["netCDF4", "1.4.0, 1.3.1, 1.2.8", '', "cp36, cp35, cp27", "sse3, generic, avx2, avx"],
+        ]
+
     def test_sort_ret(self):
         ret = avail_wheels.sort({}, None)
         self.assertIsInstance(ret, list)
@@ -141,7 +155,7 @@ class Test_sort_method(unittest.TestCase):
 
     def test_sort_condense(self):
         ret = avail_wheels.sort(self.wheels, avail_wheels.HEADERS, True)
-        self.assertEqual(ret, [["netCDF4", "1.4.0, 1.3.1, 1.2.8", '', "cp36, cp35, cp27", "sse3, generic, avx2, avx"]])
+        self.assertEqual(ret, self.condensed_output)
 
 
 class Test_get_wheels_method(unittest.TestCase):

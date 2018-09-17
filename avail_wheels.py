@@ -173,7 +173,7 @@ def sort(wheels, columns, condense=False):
                 for wheel in wheel_list:
                     dwheel[column].add(getattr(wheel, column))
 
-                row.append(sep.join(sorted(dwheel.get(column), reverse=True)))
+                row.append(sep.join(sorted(dwheel.get(column), key=LooseVersion, reverse=True)))
 
             ret.append(row)
         else:
