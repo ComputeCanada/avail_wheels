@@ -120,7 +120,14 @@ class Test_sort_method(unittest.TestCase):
                        "botocore": [avail_wheels.Wheel("generic/botocore-1.10.63-py2.py3-none-any.whl"),
                                     avail_wheels.Wheel("generic/botocore-1.9.5-py2.py3-none-any.whl"),
                                     avail_wheels.Wheel("generic/botocore-1.10.57-py2.py3-none-any.whl"),
-                                    avail_wheels.Wheel("generic/botocore-1.9.11-py2.py3-none-any.whl")]}
+                                    avail_wheels.Wheel("generic/botocore-1.9.11-py2.py3-none-any.whl")],
+
+                       "pydicom": [avail_wheels.Wheel("generic/pydicom-1.1.0-1-py2.py3-none-any.whl"),
+                                   avail_wheels.Wheel("generic/pydicom-0.9.9-py3-none-any.whl")],
+
+
+                       "torch_cpu": [avail_wheels.Wheel("avx2/torch_cpu-0.4.0-cp36-cp36m-linux_x86_64.whl"),
+                                     avail_wheels.Wheel("avx2/torch_cpu-0.2.0+d8f3c60-cp27-cp27mu-linux_x86_64.whl")]}
 
         self.wheels['netCDF4'].reverse()
 
@@ -138,11 +145,17 @@ class Test_sort_method(unittest.TestCase):
                        ['netCDF4', '1.3.1', '', 'cp36', 'avx'],
                        ['netCDF4', '1.3.1', '', 'cp35', 'avx'],
                        ['netCDF4', '1.3.1', '', 'cp27', 'avx'],
-                       ['netCDF4', '1.2.8', '', 'cp27', 'generic']]
+                       ['netCDF4', '1.2.8', '', 'cp27', 'generic'],
+                       ["pydicom", "1.1.0", "1", "py2.py3", "generic"],
+                       ["pydicom", "0.9.9", "", "py3", "generic"],
+                       ["torch_cpu", "0.4.0", "", "cp36", "avx2"],
+                       ["torch_cpu", "0.2.0", "d8f3c60", "cp27", "avx2"]]
 
         self.condensed_output = [
             ["botocore", "1.10.63, 1.10.57, 1.9.11, 1.9.5", '', "py2.py3", "generic"],
             ["netCDF4", "1.4.0, 1.3.1, 1.2.8", '', "cp36, cp35, cp27", "sse3, generic, avx2, avx"],
+            ["pydicom", "1.1.0, 0.9.9", "1, ", "py3, py2.py3", "generic"],
+            ["torch_cpu", "0.4.0, 0.2.0", "d8f3c60, ", "cp36, cp27", "avx2"]
         ]
 
     def test_sort_ret(self):

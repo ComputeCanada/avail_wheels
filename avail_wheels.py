@@ -151,6 +151,19 @@ def sort(wheels, columns, condense=False):
     Transforms dict of wheels to a list of lists
     where the columns are the wheel tags.
     """
+
+    def loose_key(x):
+        """
+        Everything and nothing can be a version, loosely!
+
+        Force parsing of empty string.
+        An empty string will always compare to another string as less or not equal.
+        This let us compare `''` with `'d8fa76c`' or `''` with `'1'`.
+        """
+        lv = LooseVersion()
+        lv.parse(x)
+        return lv
+
     ret = []
     sep = ", "
 
@@ -175,7 +188,7 @@ def sort(wheels, columns, condense=False):
                 for wheel in wheel_list:
                     dwheel[column].add(getattr(wheel, column))
 
-                row.append(sep.join(sorted(dwheel.get(column), key=LooseVersion, reverse=True)))
+                row.append(sep.join(sorted(dwheel.get(column), key=loose_key, reverse=True)))
 
             ret.append(row)
         else:
