@@ -178,7 +178,7 @@ class Test_get_wheels_method(unittest.TestCase):
                                           "netCDF4-1.3.1-cp35-cp35m-linux_x86_64.whl",
                                           "netCDF4-1.2.0-cp36-cp36m-linux_x86_64.whl",
                                           "netCDF4-1.3.1-cp36-cp36m-linux_x86_64.whl"],
-                              'torch_cpu': ["torch_cpu-0.4.0-cp36-cp36m-linux_x86_64.whl"]}
+                              'torch_cpu': ["torch_cpu-0.4.0+computecanada-cp36-cp36m-linux_x86_64.whl"]}
 
         # Create the wheelhouse and its subdirs, files.
         for arch in avail_wheels.AVAILABLE_ARCHITECTURES:
@@ -489,15 +489,21 @@ class Test_is_compatible_method(unittest.TestCase):
 
 
 class Test_match_file(unittest.TestCase):
+
     def setUp(self):
-        self.wheels = ["netCDF4-1.3.1-cp27-cp27mu-linux_x86_64.whl", "torch_cpu-0.4.1-cp27-cp27mu-linux_x86_64.whl"]
-        self.rexes = [re.compile(translate(self.wheels[0])), re.compile(translate(self.wheels[1]))]
+        tmp = ["netCDF4-1.3.1-cp27-cp27mu-linux_x86_64.whl",
+               "torch_cpu-0.4.1-cp27-cp27mu-linux_x86_64.whl",
+               "tensorflow_cpu-1.11.0+computecanada-cp36-cp36m-linux_x86_64.whl"]
+        self.wheels = [wheel for wheel in tmp] + [wheel.upper() for wheel in tmp]
+        self.rexes = [re.compile(translate(wheel), re.IGNORECASE) for wheel in tmp]
 
     def test_match_file_true(self):
+        """ Match file name case sensitevely and insensitevely. """
         for wheel in self.wheels:
             self.assertTrue(avail_wheels.match_file(wheel, self.rexes))
 
     def test_match_file_false(self):
+        """ Do not match file name case sensitevely and insensitevely. """
         for wheel in self.wheels:
             self.assertFalse(avail_wheels.match_file("None", self.rexes))
 
@@ -510,28 +516,28 @@ class Test_get_rexes(unittest.TestCase):
         return [re.compile(translate(pattern), re.IGNORECASE) for pattern in patterns]
 
     def test_get_rexes_star_star(self):
-        self.assertEqual(avail_wheels.get_rexes(product(['*'], ['*'])), self.rexes_compile(patterns=["*-*-*.whl"]))
+        self.assertEqual(avail_wheels.get_rexes(product(['*'], ['*'])), self.rexes_compile(patterns=["*-*[-+]*.whl"]))
 
     def test_get_rexes_star_version(self):
-        self.assertEqual(avail_wheels.get_rexes(product(['*'], ['1.2'])), self.rexes_compile(patterns=["*-1.2-*.whl"]))
+        self.assertEqual(avail_wheels.get_rexes(product(['*'], ['1.2'])), self.rexes_compile(patterns=["*-1.2[-+]*.whl"]))
 
     def test_get_rexes_star_versions(self):
-        self.assertEqual(avail_wheels.get_rexes(product(['*'], ['1.2', '0.4.*'])), self.rexes_compile(patterns=["*-1.2-*.whl", "*-0.4.*-*.whl"]))
+        self.assertEqual(avail_wheels.get_rexes(product(['*'], ['1.2', '0.4.*'])), self.rexes_compile(patterns=["*-1.2[-+]*.whl", "*-0.4.*[-+]*.whl"]))
 
     def test_get_rexes_name_star(self):
-        self.assertEqual(avail_wheels.get_rexes(product(["numpy"], ['*'])), self.rexes_compile(patterns=["numpy-*-*.whl"]))
+        self.assertEqual(avail_wheels.get_rexes(product(["numpy", "NUMPY"], ['*'])), self.rexes_compile(patterns=["numpy-*[-+]*.whl", "NUMPY-*[-+]*.whl"]))
 
     def test_get_rexes_name_version(self):
-        self.assertEqual(avail_wheels.get_rexes(product(["numpy"], ["1.2"])), self.rexes_compile(patterns=["numpy-1.2-*.whl"]))
+        self.assertEqual(avail_wheels.get_rexes(product(["numpy", "NUMPY"], ["1.2"])), self.rexes_compile(patterns=["numpy-1.2[-+]*.whl", "NUMPY-1.2[-+]*.whl"]))
 
     def test_get_rexes_names_star(self):
-        self.assertEqual(avail_wheels.get_rexes(product(["numpy", "torch_cpu"], ['*'])), self.rexes_compile(patterns=["numpy-*-*.whl", "torch_cpu-*-*.whl"]))
+        self.assertEqual(avail_wheels.get_rexes(product(["numpy", "TORCH_CPU"], ['*'])), self.rexes_compile(patterns=["numpy-*[-+]*.whl", "TORCH_CPU-*[-+]*.whl"]))
 
     def test_get_rexes_names_version(self):
-        self.assertEqual(avail_wheels.get_rexes(product(["numpy", "torch_cpu"], ["1.2"])), self.rexes_compile(patterns=["numpy-1.2-*.whl", "torch_cpu-1.2-*.whl"]))
+        self.assertEqual(avail_wheels.get_rexes(product(["numpy", "TORCH_CPU"], ["1.2"])), self.rexes_compile(patterns=["numpy-1.2[-+]*.whl", "TORCH_CPU-1.2[-+]*.whl"]))
 
     def test_get_rexes_names_versions(self):
-        self.assertEqual(avail_wheels.get_rexes(product(["numpy", "torch_cpu"], ["1.2", "0.4*"])), self.rexes_compile(patterns=["numpy-1.2-*.whl", "numpy-0.4*-*.whl", "torch_cpu-1.2-*.whl", "torch_cpu-0.4*-*.whl"]))
+        self.assertEqual(avail_wheels.get_rexes(product(["numpy", "TORCH_CPU"], ["1.2", "0.4*"])), self.rexes_compile(patterns=["numpy-1.2[-+]*.whl", "numpy-0.4*[-+]*.whl", "TORCH_CPU-1.2[-+]*.whl", "TORCH_CPU-0.4*[-+]*.whl"]))
 
 
 if __name__ == '__main__':

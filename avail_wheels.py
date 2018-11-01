@@ -9,7 +9,7 @@ from tabulate import tabulate
 from distutils.version import LooseVersion
 from itertools import product
 
-__version__ = "1.0.1"
+__version__ = "1.0.2"
 
 WHEELHOUSE = os.environ.get("WHEELHOUSE", "/cvmfs/soft.computecanada.ca/custom/python/wheelhouse")
 PYTHONS_DIR = os.environ.get("PYTHONS_DIR", "/cvmfs/soft.computecanada.ca/easybuild/software/2017/Core/python")
@@ -34,7 +34,7 @@ class Wheel():
     The representation of a wheel and its tags.
     """
 
-    # The wheel filename is {arch}/{distribution}-{version}(-{build tag})?-{python tag}-{abi tag}-{platform tag}.whl.
+    # The wheel filename is {arch}/{distribution}-{version}([-+]{build tag})?-{python tag}-{abi tag}-{platform tag}.whl.
     # The version can be numeric, alpha or alphanum or a combinaison.
     WHEEL_RE = re.compile(r"(?P<arch>\w+)/(?P<name>[\w.]+)-(?P<version>(?:[\w\.]+)?)(?:[\+-](?P<build>\w+))*?-(?P<python>[\w\.]+)-(?P<abi>\w+)-(?P<platform>\w+)")
 
@@ -50,7 +50,7 @@ class Wheel():
     def parse_tags(self, wheel):
         """
         Parse and set wheel tags.
-        The wheel filename is {arch}/{distribution}-{version}(-{build tag})?-{python tag}-{abi tag}-{platform tag}.whl.
+        The wheel filename is {arch}/{distribution}-{version}([-+]{build tag})?-{python tag}-{abi tag}-{platform tag}.whl.
         """
         m = self.WHEEL_RE.match(wheel)
         if m:
@@ -99,7 +99,7 @@ def get_rexes(names_versions):
     Supports exact matching and globbing of version.
     pattern: name-version*.whl
     """
-    return [re.compile(fnmatch.translate(f"{name}-{version}-*.whl"), re.IGNORECASE) for name, version in names_versions]
+    return [re.compile(fnmatch.translate(f"{name}-{version}[-+]*.whl"), re.IGNORECASE) for name, version in names_versions]
 
 
 def get_wheels(path, archs, names_versions, pythons, latest=True):
