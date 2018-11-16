@@ -540,5 +540,30 @@ class Test_get_rexes(unittest.TestCase):
         self.assertEqual(avail_wheels.get_rexes(product(["numpy", "TORCH_CPU"], ["1.2", "0.4*"])), self.rexes_compile(patterns=["numpy-1.2[-+]*.whl", "numpy-0.4*[-+]*.whl", "TORCH_CPU-1.2[-+]*.whl", "TORCH_CPU-0.4*[-+]*.whl"]))
 
 
+class Test_add_not_available_wheels(unittest.TestCase):
+    def setUp(self):
+        self.wheels = {'torch_cpu': [avail_wheels.Wheel(filename="torch_cpu", name="torch_cpu", parse=False)],
+                       'numpy': [avail_wheels.Wheel(filename="numpy", name="numpy", parse=False)]}
+
+        self.wheel_names = ['a', 'b', 'torch*']
+
+    def test_not_avail_empty(self):
+        """ Test that an empty dict of wheels only contains the given wheel names. """
+        ret = avail_wheels.add_not_available_wheels({}, self.wheel_names)
+
+        self.assertEqual(ret, {'a': [avail_wheels.Wheel(filename='a', name='a', parse=False)],
+                               'b': [avail_wheels.Wheel(filename='b', name='b', parse=False)],
+                               'torch*': [avail_wheels.Wheel(filename="torch*", name="torch*", parse=False)]})
+
+    def test_not_avail(self):
+        """ Test that wheels patterns are not added if they previously matched. """
+        ret = avail_wheels.add_not_available_wheels(self.wheels, self.wheel_names)
+
+        self.assertEqual(ret, {'a': [avail_wheels.Wheel(filename='a', name='a', parse=False)],
+                               'b': [avail_wheels.Wheel(filename='b', name='b', parse=False)],
+                               'torch_cpu': [avail_wheels.Wheel(filename="torch_cpu", name="torch_cpu", parse=False)],
+                               'numpy': [avail_wheels.Wheel(filename="numpy", name="numpy", parse=False)]})
+
+
 if __name__ == '__main__':
     unittest.main()

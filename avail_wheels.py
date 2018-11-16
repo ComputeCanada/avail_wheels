@@ -197,6 +197,16 @@ def sort(wheels, columns, condense=False):
     return ret
 
 
+def add_not_available_wheels(wheels, wheel_names):
+    """ Add the wheels names given from the user that were not found. """
+    for wheel in wheel_names:
+        # Do not duplicate and add names that translate to an already present name.
+        if wheel not in wheels and all(not re.match(fnmatch.translate(wheel), w) for w in wheels.keys()):
+            wheels[wheel] = [Wheel(filename=wheel, name=wheel, parse=False)]
+
+    return wheels
+
+
 def create_argparser():
     """
     Returns an arguments parser for `avail_wheels` command.
@@ -250,6 +260,7 @@ def create_argparser():
     display_group.add_argument("--raw", action='store_true', help="Print raw files names. Has precedence over other arguments of this group."),
     display_group.add_argument("--column", choices=AVAILABLE_HEADERS, nargs='+', default=HEADERS, help="Specify and order the columns to display."),
     display_group.add_argument("--condense", action='store_true', help="Condense wheel information into one line.")
+    display_group.add_argument("--not-available", action='store_true', help="Also display wheels that were not available.")
 
     return parser
 
@@ -257,7 +268,7 @@ def create_argparser():
 def main():
     args = create_argparser().parse_args()
 
-    # Add name valueS to the positionnal wheel argument
+    # Add name values to the positionnal wheel argument
     if args.name and args.wheel == DEFAULT_STAR_ARG:
         args.wheel = args.name
     elif args.name:
@@ -269,6 +280,9 @@ def main():
     latest = not args.all_versions and args.version == DEFAULT_STAR_ARG
 
     wheels = get_wheels(WHEELHOUSE, archs=archs, names_versions=names_versions, pythons=pythons, latest=latest)
+
+    if args.not_available:
+        wheels = add_not_available_wheels(wheels, args.wheel)
 
     if args.raw:
         for wheel_list in wheels.values():
