@@ -9,7 +9,6 @@ By default, it will:
 
 ### Requirements
 * Python 3.7 and up
-* tabulate==0.8.2
 
 ```
 python3.7 -m venv .venv
@@ -19,12 +18,14 @@ pip install -r requirements.txt
 
 ## Usage and Examples
 ```
-usage: avail_wheels [-h] [-n NAME [NAME ...]] [-v VERSION [VERSION ...] | --all_versions]
-                    [-p {2.7,3.5,3.6,3.7} [{2.7,3.5,3.6,3.7} ...] | --all_pythons]
-                    [-a {avx,avx2,generic,sse3} [{avx,avx2,generic,sse3} ...] | --all_archs]
-                    [--mediawiki] [--raw]
+usage: avail_wheels [-h] [-n NAME [NAME ...]] [-v VERSION [VERSION ...] |
+                    --all_versions]
+                    [-p {2.7,3.5,3.6,3.7} [{2.7,3.5,3.6,3.7} ...] |
+                    --all_pythons]
+                    [-a {avx,avx2,avx512,generic,sse3} [{avx,avx2,avx512,generic,sse3} ...]
+                    | --all_archs] [--mediawiki] [--raw]
                     [--column {name,version,build,python,abi,platform,arch} [{name,version,build,python,abi,platform,arch} ...]]
-                    [--condense]
+                    [--condense] [--not-available]
                     [wheel [wheel ...]]
 
 List currently available wheels patterns from the wheelhouse. By default, it will:
@@ -54,7 +55,7 @@ python:
   --all_pythons         Show all pythons of each wheel. (default: False)
 
 architecture:
-  -a {avx,avx2,generic,sse3} [{avx,avx2,generic,sse3} ...], --arch {avx,avx2,generic,sse3} [{avx,avx2,generic,sse3} ...]
+  -a {avx,avx2,avx512,generic,sse3} [{avx,avx2,avx512,generic,sse3} ...], --arch {avx,avx2,avx512,generic,sse3} [{avx,avx2,avx512,generic,sse3} ...]
                         Specify the architecture to look for. (default:
                         ['generic', None])
   --all_archs           Show all architectures of each wheel. (default: False)
@@ -67,6 +68,8 @@ display:
                         Specify and order the columns to display. (default:
                         ['name', 'version', 'build', 'python', 'arch'])
   --condense            Condense wheel information into one line. (default:
+                        False)
+  --not-available       Also display wheels that were not available. (default:
                         False)
 
 Examples:
