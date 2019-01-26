@@ -207,6 +207,14 @@ def add_not_available_wheels(wheels, wheel_names):
     return wheels
 
 
+def normalize_names(wheel_names):
+    """
+    Normalize wheel names. Replaces `-` for `_`.
+    Pip support names with dashes, but wheel convert them to underscores.
+    """
+    return [name.replace('-', '_') for name in wheel_names]
+
+
 def create_argparser():
     """
     Returns an arguments parser for `avail_wheels` command.
@@ -273,6 +281,9 @@ def main():
         args.wheel = args.name
     elif args.name:
         args.wheel.extend(args.name)
+
+    # Pip support names with `-`, but wheel convert `-` to `_`.
+    args.wheel = normalize_names(args.wheel)
 
     pythons = args.python if not args.all_pythons else AVAILABLE_PYTHONS
     archs = args.arch if not args.all_archs else AVAILABLE_ARCHITECTURES

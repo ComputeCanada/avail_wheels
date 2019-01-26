@@ -565,5 +565,19 @@ class Test_add_not_available_wheels(unittest.TestCase):
                                'numpy': [avail_wheels.Wheel(filename="numpy", name="numpy", parse=False)]})
 
 
+class Test_normalize_names(unittest.TestCase):
+    def test_normalize_type(self):
+        """ Test that return type is list. """
+        self.assertIsInstance(avail_wheels.normalize_names([]), list)
+
+    def test_normalize(self):
+        """ Test that normalize empty list, names with multiple dash are converted to underscores. """
+        self.assertEqual(avail_wheels.normalize_names([]), [])
+
+        names = ['', 'torch-cpu', 'torch_cpu', 'torch-cpu-gpu']
+        ret = avail_wheels.normalize_names(names)
+        self.assertEqual(ret, ['', 'torch_cpu', 'torch_cpu', 'torch_cpu_gpu'])
+
+
 if __name__ == '__main__':
     unittest.main()
