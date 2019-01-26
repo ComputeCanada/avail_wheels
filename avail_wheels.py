@@ -6,7 +6,7 @@ import argparse
 import fnmatch
 import operator
 from tabulate import tabulate
-from distutils.version import LooseVersion
+from packaging import version
 from itertools import product
 
 __version__ = "1.1.0"
@@ -65,7 +65,7 @@ class Wheel():
             raise Exception(f"Could not get tags for : {wheel}")
 
     def loose_version(self):
-        return LooseVersion(self.version)
+        return version.parse(self.version)
 
     def __str__(self):
         return self.filename
@@ -155,14 +155,8 @@ def sort(wheels, columns, condense=False):
     def loose_key(x):
         """
         Everything and nothing can be a version, loosely!
-
-        Force parsing of empty string.
-        An empty string will always compare to another string as less or not equal.
-        This let us compare `''` with `'d8fa76c`' or `''` with `'1'`.
         """
-        lv = LooseVersion()
-        lv.parse(x)
-        return lv
+        return version.parse(x)
 
     ret = []
     sep = ", "

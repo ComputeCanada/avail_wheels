@@ -155,7 +155,7 @@ class Test_sort_method(unittest.TestCase):
             ["botocore", "1.10.63, 1.10.57, 1.9.11, 1.9.5", '', "py2.py3", "generic"],
             ["netCDF4", "1.4.0, 1.3.1, 1.2.8", '', "cp36, cp35, cp27", "sse3, generic, avx2, avx"],
             ["pydicom", "1.1.0, 0.9.9", "1, ", "py3, py2.py3", "generic"],
-            ["torch_cpu", "0.4.0, 0.2.0", "d8f3c60, ", "cp36, cp27", "avx2"]
+            ["torch_cpu", "0.4.0, 0.2.0", ", d8f3c60", "cp36, cp27", "avx2"]
         ]
 
     def test_sort_ret(self):
