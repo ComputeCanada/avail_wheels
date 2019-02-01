@@ -9,7 +9,7 @@ from tabulate import tabulate
 from packaging import version
 from itertools import product
 
-__version__ = "1.1.0"
+__version__ = "1.1.1"
 
 WHEELHOUSE = os.environ.get("WHEELHOUSE", "/cvmfs/soft.computecanada.ca/custom/python/wheelhouse")
 PYTHONS_DIR = os.environ.get("PYTHONS_DIR", "/cvmfs/soft.computecanada.ca/easybuild/software/2017/Core/python")
