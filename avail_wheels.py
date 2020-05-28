@@ -1,6 +1,7 @@
 #!/cvmfs/soft.computecanada.ca/custom/python/envs/avail_wheels/bin/python3
 
 import os
+import sys
 import re
 import argparse
 import fnmatch
@@ -289,12 +290,21 @@ def main():
     if args.not_available:
         wheels = add_not_available_wheels(wheels, args.wheel)
 
-    if args.raw:
-        for wheel_list in wheels.values():
-            print(*wheel_list, sep='\n')
-    else:
-        wheels = sort(wheels, args.column, args.condense)
-        print(tabulate(wheels, headers=args.column, tablefmt="mediawiki" if args.mediawiki else "simple"))
+    # Handle SIGPIP emitted by piping to utils like head.
+    # https://docs.python.org/3/library/signal.html#note-on-sigpipe
+    try:
+        if args.raw:
+            for wheel_list in wheels.values():
+                print(*wheel_list, sep='\n')
+        else:
+            wheels = sort(wheels, args.column, args.condense)
+            print(tabulate(wheels, headers=args.column, tablefmt="mediawiki" if args.mediawiki else "simple"))
+    except BrokenPipeError:
+        # Python flushes standard streams on exit; redirect remaining output
+        # to devnull to avoid another BrokenPipeError at shutdown
+        devnull = os.open(os.devnull, os.O_WRONLY)
+        os.dup2(devnull, sys.stdout.fileno())
+        sys.exit(1)  # Python exits with error code 1 on EPIPE
 
 
 if __name__ == "__main__":
