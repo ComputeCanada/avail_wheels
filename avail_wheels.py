@@ -6,6 +6,7 @@ import re
 import argparse
 import fnmatch
 import operator
+from warnings import warn
 from tabulate import tabulate
 from packaging import version
 from itertools import product
@@ -63,7 +64,7 @@ class Wheel():
             self.abi = m.group('abi')
             self.platform = m.group('platform')
         else:
-            raise Exception(f"Could not get tags for : {wheel}")
+            warn(f"Could not get tags for : {wheel}")
 
     def loose_version(self):
         return version.parse(self.version)

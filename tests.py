@@ -52,15 +52,15 @@ class Test_wheel_class(unittest.TestCase):
 
     def test_parse_tags_malformed_bad_sep(self):
         filename = "avx2/netCDF4-1.3.1.cp36-cp36m-linux_x86_64.whl"
-        self.assertRaisesRegex(Exception, f"Could not get tags for : {filename}", avail_wheels.Wheel, filename=filename, parse=True)
+        self.assertWarnsRegex(UserWarning, f"Could not get tags for : {filename}", avail_wheels.Wheel, filename=filename, parse=True)
 
     def test_parse_tags_malformed_missing_sep(self):
         filename = "avx2/netCDF4-1.3.1-cp36cp36m-linux_x86_64.whl"
-        self.assertRaisesRegex(Exception, f"Could not get tags for : {filename}", avail_wheels.Wheel, filename=filename, parse=True)
+        self.assertWarnsRegex(UserWarning, f"Could not get tags for : {filename}", avail_wheels.Wheel, filename=filename, parse=True)
 
     def test_parse_tags_malformed_missing_name(self):
         filename = "avx2/1.3.1-cp36-cp36m-linux_x86_64.whl"
-        self.assertRaisesRegex(Exception, f"Could not get tags for : {filename}", avail_wheels.Wheel, filename=filename, parse=True)
+        self.assertWarnsRegex(UserWarning, f"Could not get tags for : {filename}", avail_wheels.Wheel, filename=filename, parse=True)
 
     def test_wheel_print(self):
         wheel = str(avail_wheels.Wheel("file", parse=False))
