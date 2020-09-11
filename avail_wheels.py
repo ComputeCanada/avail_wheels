@@ -6,7 +6,7 @@ import re
 import argparse
 import fnmatch
 import operator
-from warnings import warn
+import warnings
 from tabulate import tabulate
 from packaging import version
 from itertools import product
@@ -31,6 +31,13 @@ AVAILABLE_HEADERS = ['name', 'version', 'build', 'python', 'abi', 'platform', 'a
 HEADERS = ['name', 'version', 'build', 'python', 'arch']
 
 DEFAULT_STAR_ARG = ['*']
+
+
+def __warning_on_one_line(message, category, filename, lineno, file=None, line=None):
+    return f'{filename}, {lineno}, {category.__name__}, {message}\n'
+
+
+warnings.formatwarning = __warning_on_one_line
 
 
 class Wheel():
@@ -66,7 +73,7 @@ class Wheel():
             self.abi = m.group('abi')
             self.platform = m.group('platform')
         else:
-            warn(f"Could not get tags for : {wheel}")
+            warnings.warn(f"Could not get tags for : {wheel}")
 
     def loose_version(self):
         return version.parse(self.version)
