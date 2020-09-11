@@ -181,20 +181,22 @@ class Test_get_wheels_method(unittest.TestCase):
                               'torch_cpu': ["torch_cpu-0.4.0+computecanada-cp36-cp36m-linux_x86_64.whl"]}
 
         # Create the wheelhouse and its subdirs, files.
-        for arch in avail_wheels.AVAILABLE_ARCHITECTURES:
-            os.makedirs(f"{self.wheelhouse}/{arch}", exist_ok=True)
-            for files in self.raw_filenames.values():
-                for file in files:
-                    Path(f"{self.wheelhouse}/{arch}/{file}").touch()
+        for stack in ['generic']:
+            for arch in avail_wheels.AVAILABLE_ARCHITECTURES:
+                os.makedirs(f"{self.wheelhouse}/{stack}/{arch}", exist_ok=True)
+                for files in self.raw_filenames.values():
+                    for file in files:
+                        Path(f"{self.wheelhouse}/{stack}/{arch}/{file}").touch()
 
     def tearDown(self):
         # Delete wheelhouse
-        for arch in avail_wheels.AVAILABLE_ARCHITECTURES:
-            for files in self.raw_filenames.values():
-                for file in files:
-                    os.remove(f"{self.wheelhouse}/{arch}/{file}")
-            os.rmdir(f"{self.wheelhouse}/{arch}")
-
+        for stack in ['generic']:
+            for arch in avail_wheels.AVAILABLE_ARCHITECTURES:
+                for files in self.raw_filenames.values():
+                    for file in files:
+                        os.remove(f"{self.wheelhouse}/{stack}/{arch}/{file}")
+                os.rmdir(f"{self.wheelhouse}/{stack}/{arch}")
+            os.rmdir(f"{self.wheelhouse}/{stack}")
         os.rmdir(self.wheelhouse)
 
     def test_get_wheels_all_archs_all_pythons(self):

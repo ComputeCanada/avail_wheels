@@ -16,8 +16,10 @@ __version__ = "1.1.1"
 WHEELHOUSE = os.environ.get("WHEELHOUSE", "/cvmfs/soft.computecanada.ca/custom/python/wheelhouse")
 PYTHONS_DIR = os.environ.get("PYTHONS_DIR", "/cvmfs/soft.computecanada.ca/easybuild/software/2017/Core/python")
 
+AVAILABLE_STACKS = sorted(['generic', 'nix', 'gentoo'])
+
 CURRENT_ARCHITECTURE = os.environ.get("RSNT_ARCH")
-AVAILABLE_ARCHITECTURES = sorted(os.listdir(WHEELHOUSE))  # Get the available architectures from CVMFS
+AVAILABLE_ARCHITECTURES = sorted(['sse3', 'avx', 'avx2', 'avx512', 'generic'])
 ARCHITECTURES = ['generic', CURRENT_ARCHITECTURE]
 
 AVAILABLE_PYTHONS = sorted({pv[:3] for pv in os.listdir(PYTHONS_DIR) if re.match(r"\d+.\d+(.\d+)?", pv)})  # Get the available python versions from CVMFS
@@ -113,16 +115,17 @@ def get_wheels(path, archs, names_versions, pythons, latest=True):
     wheels = {}
     rexes = get_rexes(names_versions)
 
-    for arch in archs:
-        for _, _, files in os.walk(f"{path}/{arch}"):
-            for file in files:
-                if match_file(file, rexes):
-                    wheel = Wheel(f"{arch}/{file}")
-                    if is_compatible(wheel, pythons):
-                        if wheel.name in wheels:
-                            wheels[wheel.name].append(wheel)
-                        else:
-                            wheels[wheel.name] = [wheel]
+    for stack in AVAILABLE_STACKS:
+        for arch in archs:
+            for _, _, files in os.walk(f"{path}/{stack}/{arch}"):
+                for file in files:
+                    if match_file(file, rexes):
+                        wheel = Wheel(f"{arch}/{file}")
+                        if is_compatible(wheel, pythons):
+                            if wheel.name in wheels:
+                                wheels[wheel.name].append(wheel)
+                            else:
+                                wheels[wheel.name] = [wheel]
 
     # Filter versions
     return latest_versions(wheels) if latest else wheels
