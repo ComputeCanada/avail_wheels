@@ -13,7 +13,7 @@ from packaging import version
 from itertools import product
 from glob import glob
 
-__version__ = "1.1.1"
+__version__ = "1.2.0"
 
 WHEELHOUSE = os.environ.get("WHEELHOUSE", "/cvmfs/soft.computecanada.ca/custom/python/wheelhouse")
 PYTHONS_DIR = glob(os.environ.get("PYTHONS_DIR", "/cvmfs/soft.computecanada.ca/easybuild/software/20*/Core/python"))
