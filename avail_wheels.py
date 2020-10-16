@@ -279,18 +279,21 @@ def create_argparser():
     parser.add_mutually_exclusive_group()._group_actions.extend([
         version_group.add_argument("-v", "--version", nargs="+", default=DEFAULT_STAR_ARG, help="Specify the version to look for."),
         version_group.add_argument("--all_versions", action='store_true', help="Show all versions of each wheel."),
+        version_group.add_argument("--all-versions", action='store_true', dest="all_versions"),
     ])
 
     python_group = parser.add_argument_group('python')
     parser.add_mutually_exclusive_group()._group_actions.extend([
         python_group.add_argument("-p", "--python", choices=AVAILABLE_PYTHONS, nargs='+', default=[CURRENT_PYTHON[:3]] if CURRENT_PYTHON else AVAILABLE_PYTHONS, help="Specify the python versions to look for."),
         python_group.add_argument("--all_pythons", action='store_true', help="Show all pythons of each wheel."),
+        python_group.add_argument("--all-pythons", action='store_true', dest="all_pythons"),
     ])
 
     arch_group = parser.add_argument_group('architecture')
     parser.add_mutually_exclusive_group()._group_actions.extend([
         arch_group.add_argument("-a", "--arch", choices=AVAILABLE_ARCHITECTURES, nargs='+', help=f"Specify the architecture to look for from the paths configured in {PIP_CONFIG_FILE}."),
-        arch_group.add_argument("--all_archs", action='store_true', help=f"Show all architectures of each wheel from the paths configured in {PIP_CONFIG_FILE}.")
+        arch_group.add_argument("--all_archs", action='store_true', help=f"Show all architectures of each wheel from the paths configured in {PIP_CONFIG_FILE}."),
+        arch_group.add_argument("--all-archs", action='store_true', dest="all_archs")
     ])
 
     display_group = parser.add_argument_group('display')
