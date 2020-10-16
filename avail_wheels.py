@@ -7,6 +7,7 @@ import argparse
 import fnmatch
 import operator
 import warnings
+import configparser
 from tabulate import tabulate
 from packaging import version
 from itertools import product
@@ -15,6 +16,7 @@ __version__ = "1.1.1"
 
 WHEELHOUSE = os.environ.get("WHEELHOUSE", "/cvmfs/soft.computecanada.ca/custom/python/wheelhouse")
 PYTHONS_DIR = os.environ.get("PYTHONS_DIR", "/cvmfs/soft.computecanada.ca/easybuild/software/2017/Core/python")
+PIP_CONFIG_FILE = os.environ.get("PIP_CONFIG_FILE")
 
 AVAILABLE_STACKS = sorted(['generic', 'nix', 'gentoo'])
 
@@ -113,7 +115,7 @@ def get_rexes(names_versions):
     return [re.compile(fnmatch.translate(f"{name}-{version}[-+]*.whl"), re.IGNORECASE) for name, version in names_versions]
 
 
-def get_wheels(path, archs, names_versions, pythons, latest=True):
+def get_wheels(paths, names_versions, pythons, latest=True):
     """
     Glob the full list of wheels in the wheelhouse on CVMFS.
     Can also be filterd on arch, name, version or python.
@@ -122,17 +124,17 @@ def get_wheels(path, archs, names_versions, pythons, latest=True):
     wheels = {}
     rexes = get_rexes(names_versions)
 
-    for stack in AVAILABLE_STACKS:
-        for arch in archs:
-            for _, _, files in os.walk(f"{path}/{stack}/{arch}"):
-                for file in files:
-                    if match_file(file, rexes):
-                        wheel = Wheel(f"{arch}/{file}")
-                        if is_compatible(wheel, pythons):
-                            if wheel.name in wheels:
-                                wheels[wheel.name].append(wheel)
-                            else:
-                                wheels[wheel.name] = [wheel]
+    for path in paths:
+        arch = os.path.basename(path)
+        for _, _, files in os.walk(f"{path}"):
+            for file in files:
+                if match_file(file, rexes):
+                    wheel = Wheel(f"{arch}/{file}")
+                    if is_compatible(wheel, pythons):
+                        if wheel.name in wheels:
+                            wheels[wheel.name].append(wheel)
+                        else:
+                            wheels[wheel.name] = [wheel]
 
     # Filter versions
     return latest_versions(wheels) if latest else wheels
@@ -221,6 +223,28 @@ def normalize_names(wheel_names):
     return [name.replace('-', '_') for name in wheel_names]
 
 
+def filter_search_paths(search_paths, arch_values):
+    """
+    Filter paths that ends with specific values.
+    """
+    if arch_values is None or arch_values == []:
+        return search_paths
+
+    return [path for arch_value in arch_values for path in search_paths if path.endswith(arch_value)]
+
+
+def get_search_paths():
+    """
+    Gets the search paths from the $PIP_CONFIG_FILE or start at root of the wheelhouse.
+    """
+    if PIP_CONFIG_FILE is None or PIP_CONFIG_FILE == "":
+        return [os.path.join(root, d) for root, dirs, _ in os.walk(WHEELHOUSE) if root[len(WHEELHOUSE):].count(os.sep) == 1 for d in dirs]
+
+    cfg = configparser.ConfigParser()
+    cfg.read(PIP_CONFIG_FILE)
+    return cfg['wheel']['find-links'].split(' ')
+
+
 def create_argparser():
     """
     Returns an arguments parser for `avail_wheels` command.
@@ -265,8 +289,8 @@ def create_argparser():
 
     arch_group = parser.add_argument_group('architecture')
     parser.add_mutually_exclusive_group()._group_actions.extend([
-        arch_group.add_argument("-a", "--arch", choices=AVAILABLE_ARCHITECTURES, nargs='+', default=ARCHITECTURES, help="Specify the architecture to look for."),
-        arch_group.add_argument("--all_archs", action='store_true', help="Show all architectures of each wheel.")
+        arch_group.add_argument("-a", "--arch", choices=AVAILABLE_ARCHITECTURES, nargs='+', help=f"Specify the architecture to look for from the paths configured in {PIP_CONFIG_FILE}."),
+        arch_group.add_argument("--all_archs", action='store_true', help=f"Show all architectures of each wheel from the paths configured in {PIP_CONFIG_FILE}.")
     ])
 
     display_group = parser.add_argument_group('display')
@@ -291,12 +315,13 @@ def main():
     # Pip support names with `-`, but wheel convert `-` to `_`.
     args.wheel = normalize_names(args.wheel)
 
+    # Specifying `all_arch` set `--arch` to None, hence returns all search paths from PIP_CONFIG_FILE
+    search_paths = filter_search_paths(get_search_paths(), args.arch)
     pythons = args.python if not args.all_pythons else AVAILABLE_PYTHONS
-    archs = args.arch if not args.all_archs else AVAILABLE_ARCHITECTURES
     names_versions = product(args.wheel, args.version)
     latest = not args.all_versions and args.version == DEFAULT_STAR_ARG
 
-    wheels = get_wheels(WHEELHOUSE, archs=archs, names_versions=names_versions, pythons=pythons, latest=latest)
+    wheels = get_wheels(search_paths, names_versions=names_versions, pythons=pythons, latest=latest)
 
     if args.not_available:
         wheels = add_not_available_wheels(wheels, args.wheel)

@@ -179,9 +179,10 @@ class Test_get_wheels_method(unittest.TestCase):
                                           "netCDF4-1.2.0-cp36-cp36m-linux_x86_64.whl",
                                           "netCDF4-1.3.1-cp36-cp36m-linux_x86_64.whl"],
                               'torch_cpu': ["torch_cpu-0.4.0+computecanada-cp36-cp36m-linux_x86_64.whl"]}
+        self.current_stack = 'nix'
 
         # Create the wheelhouse and its subdirs, files.
-        for stack in ['generic']:
+        for stack in [self.current_stack]:
             for arch in avail_wheels.AVAILABLE_ARCHITECTURES:
                 os.makedirs(f"{self.wheelhouse}/{stack}/{arch}", exist_ok=True)
                 for files in self.raw_filenames.values():
@@ -190,7 +191,7 @@ class Test_get_wheels_method(unittest.TestCase):
 
     def tearDown(self):
         # Delete wheelhouse
-        for stack in ['generic']:
+        for stack in [self.current_stack]:
             for arch in avail_wheels.AVAILABLE_ARCHITECTURES:
                 for files in self.raw_filenames.values():
                     for file in files:
@@ -200,84 +201,91 @@ class Test_get_wheels_method(unittest.TestCase):
         os.rmdir(self.wheelhouse)
 
     def test_get_wheels_all_archs_all_pythons(self):
+        search_paths = [f"{self.wheelhouse}/{self.current_stack}/{arch}" for arch in avail_wheels.AVAILABLE_ARCHITECTURES]
         other = {'netCDF4': [], 'torch_cpu': []}
         for arch in avail_wheels.AVAILABLE_ARCHITECTURES:
             for wheel_name, files in self.raw_filenames.items():
                 for file in files:
                     other[wheel_name].append(avail_wheels.Wheel(f"{arch}/{file}"))
 
-        ret = avail_wheels.get_wheels(path=self.wheelhouse, archs=avail_wheels.AVAILABLE_ARCHITECTURES, pythons=avail_wheels.AVAILABLE_PYTHONS, names_versions=product('*', '*'), latest=False)
+        ret = avail_wheels.get_wheels(paths=search_paths, pythons=avail_wheels.AVAILABLE_PYTHONS, names_versions=product('*', '*'), latest=False)
         self.assertEqual(ret, other)
 
     def test_get_wheels_arch_all_pythons(self):
-        archs = ['avx2']
+        arch = 'avx2'
+        search_paths = [f'{self.wheelhouse}/{self.current_stack}/{arch}']
         other = {'netCDF4': [], 'torch_cpu': []}
-        for arch in archs:
-            for wheel_name, files in self.raw_filenames.items():
-                for file in files:
-                    other[wheel_name].append(avail_wheels.Wheel(f"{arch}/{file}"))
+        for wheel_name, files in self.raw_filenames.items():
+            for file in files:
+                other[wheel_name].append(avail_wheels.Wheel(f"{arch}/{file}"))
 
-        ret = avail_wheels.get_wheels(path=self.wheelhouse, archs=archs, pythons=avail_wheels.AVAILABLE_PYTHONS, names_versions=product('*', '*'), latest=False)
+        ret = avail_wheels.get_wheels(paths=search_paths, pythons=avail_wheels.AVAILABLE_PYTHONS, names_versions=product('*', '*'), latest=False)
         self.assertEqual(ret, other)
 
     def test_get_wheels_arch_python(self):
-        archs = ['avx2']
+        arch = 'avx2'
+        search_paths = [f"{self.wheelhouse}/{self.current_stack}/{arch}"]
         pythons = ['3.6']
-        other = {'netCDF4': [avail_wheels.Wheel(f"{archs[0]}/{self.raw_filenames['netCDF4'][2]}"),
-                             avail_wheels.Wheel(f"{archs[0]}/{self.raw_filenames['netCDF4'][3]}")],
-                 'torch_cpu': [avail_wheels.Wheel(f"{archs[0]}/{self.raw_filenames['torch_cpu'][0]}")]}
+        other = {'netCDF4': [avail_wheels.Wheel(f"{arch}/{self.raw_filenames['netCDF4'][2]}"),
+                             avail_wheels.Wheel(f"{arch}/{self.raw_filenames['netCDF4'][3]}")],
+                 'torch_cpu': [avail_wheels.Wheel(f"{arch}/{self.raw_filenames['torch_cpu'][0]}")]}
 
-        ret = avail_wheels.get_wheels(path=self.wheelhouse, archs=archs, pythons=pythons, names_versions=product('*', '*'), latest=False)
+        ret = avail_wheels.get_wheels(paths=search_paths, pythons=pythons, names_versions=product('*', '*'), latest=False)
         self.assertEqual(ret, other)
 
     def test_get_wheels_exactname_arch_python(self):
-        archs = ['avx2']
+        arch = 'avx2'
+        search_paths = [f"{self.wheelhouse}/{self.current_stack}/{arch}"]
         pythons = ['3.6']
         exactname = "netCDF4"
-        other = {'netCDF4': [avail_wheels.Wheel(f"{archs[0]}/{self.raw_filenames['netCDF4'][2]}"),
-                             avail_wheels.Wheel(f"{archs[0]}/{self.raw_filenames['netCDF4'][3]}")]}
+        other = {'netCDF4': [avail_wheels.Wheel(f"{arch}/{self.raw_filenames['netCDF4'][2]}"),
+                             avail_wheels.Wheel(f"{arch}/{self.raw_filenames['netCDF4'][3]}")]}
 
-        ret = avail_wheels.get_wheels(path=self.wheelhouse, archs=archs, pythons=pythons, names_versions=product([exactname], '*'), latest=False)
+        ret = avail_wheels.get_wheels(paths=search_paths, pythons=pythons, names_versions=product([exactname], '*'), latest=False)
         self.assertEqual(ret, other)
 
     def test_get_wheels_wildname_arch_python(self):
-        archs = ['avx2']
+        arch = 'avx2'
+        search_paths = [f"{self.wheelhouse}/{self.current_stack}/{arch}"]
         pythons = ['3.6']
         wildname = "*CDF*"
-        other = {'netCDF4': [avail_wheels.Wheel(f"{archs[0]}/{self.raw_filenames['netCDF4'][2]}"),
-                             avail_wheels.Wheel(f"{archs[0]}/{self.raw_filenames['netCDF4'][3]}")]}
+        other = {'netCDF4': [avail_wheels.Wheel(f"{arch}/{self.raw_filenames['netCDF4'][2]}"),
+                             avail_wheels.Wheel(f"{arch}/{self.raw_filenames['netCDF4'][3]}")]}
 
-        ret = avail_wheels.get_wheels(path=self.wheelhouse, archs=archs, pythons=pythons, names_versions=product([wildname], "*"), latest=False)
+        ret = avail_wheels.get_wheels(paths=search_paths, pythons=pythons, names_versions=product([wildname], "*"), latest=False)
         self.assertEqual(ret, other)
 
     def test_get_wheels_wildname_arch_python_version(self):
-        archs = ['avx2']
+        arch = 'avx2'
+        search_paths = [f"{self.wheelhouse}/{self.current_stack}/{arch}"]
         pythons = ['3.6']
         wildname = "*CDF*"
         version = '1.3.1'
-        other = {'netCDF4': [avail_wheels.Wheel(f"{archs[0]}/{self.raw_filenames['netCDF4'][3]}")]}
+        other = {'netCDF4': [avail_wheels.Wheel(f"{arch}/{self.raw_filenames['netCDF4'][3]}")]}
 
-        ret = avail_wheels.get_wheels(path=self.wheelhouse, archs=archs, pythons=pythons, names_versions=product([wildname], [version]), latest=False)
+        ret = avail_wheels.get_wheels(paths=search_paths, pythons=pythons, names_versions=product([wildname], [version]), latest=False)
         self.assertEqual(ret, other)
 
     def test_get_wheels_wildversion_wildname_arch_python(self):
-        archs = ['avx2']
+        arch = 'avx2'
+        search_paths = [f"{self.wheelhouse}/{self.current_stack}/{arch}"]
         pythons = ['3.6']
         wildname = "*CDF*"
         version = '1.2.*'
-        other = {'netCDF4': [avail_wheels.Wheel(f"{archs[0]}/{self.raw_filenames['netCDF4'][2]}")]}
+        other = {'netCDF4': [avail_wheels.Wheel(f"{arch}/{self.raw_filenames['netCDF4'][2]}")]}
 
-        ret = avail_wheels.get_wheels(path=self.wheelhouse, archs=archs, pythons=pythons, names_versions=product([wildname], [version]), latest=False)
+        ret = avail_wheels.get_wheels(paths=search_paths, pythons=pythons, names_versions=product([wildname], [version]), latest=False)
         self.assertEqual(ret, other)
 
     def test_get_wheels_wrongversion_wildname_arch_python(self):
-        archs = ['avx2']
+        arch = 'avx2'
+        search_paths = [f"{self.wheelhouse}/{self.current_stack}/{arch}"]
         pythons = ['3.6']
         wildname = "*CDF*"
         version = '2.3'
         other = {}
 
-        ret = avail_wheels.get_wheels(path=self.wheelhouse, archs=archs, pythons=pythons, names_versions=product([wildname], [version]), latest=False)
+        ret = avail_wheels.get_wheels(paths=search_paths, pythons=pythons, names_versions=product([wildname], [version]), latest=False)
         self.assertEqual(ret, other)
 
 
@@ -307,7 +315,7 @@ class Test_parse_args_method(unittest.TestCase):
         self.parser.parse_args([])
         self.assertEqual(avail_wheels.CURRENT_ARCHITECTURE, self.current_architecture)
         self.assertEqual(avail_wheels.ARCHITECTURES, default_arch)
-        self.assertEqual(self.parser.get_default('arch'), default_arch)
+        self.assertEqual(self.parser.get_default('arch'), None)
 
     def test_default_noarch(self):
         """ Special case (eg on personnal system). """
@@ -317,7 +325,7 @@ class Test_parse_args_method(unittest.TestCase):
 
         self.assertEqual(avail_wheels.CURRENT_ARCHITECTURE, self.current_architecture)
         self.assertEqual(avail_wheels.ARCHITECTURES, default_arch)
-        self.assertEqual(self.parser.get_default('arch'), default_arch)
+        self.assertEqual(self.parser.get_default('arch'), None)
 
     def test_default_python(self):
         default_python = ['3.6']
@@ -579,6 +587,130 @@ class Test_normalize_names(unittest.TestCase):
         names = ['', 'torch-cpu', 'torch_cpu', 'torch-cpu-gpu']
         ret = avail_wheels.normalize_names(names)
         self.assertEqual(ret, ['', 'torch_cpu', 'torch_cpu', 'torch_cpu_gpu'])
+
+
+class Test_filter_search_paths(unittest.TestCase):
+    def setUp(self):
+        self.search_paths = [f'path/{path}' for path in avail_wheels.AVAILABLE_ARCHITECTURES]
+
+    def test_get_all_search_paths(self):
+        """
+        Test that without any filter values all search paths are returned.
+        """
+        self.assertEqual(avail_wheels.filter_search_paths(self.search_paths, None), self.search_paths)
+        self.assertEqual(avail_wheels.filter_search_paths(self.search_paths, []), self.search_paths)
+
+    def test_get_sse3(self):
+        """
+        Test that SSE3 are correctly filtered
+        """
+        self.assertEqual(avail_wheels.filter_search_paths(self.search_paths, ['sse3']), ['path/sse3'])
+        self.assertEqual(avail_wheels.filter_search_paths(self.search_paths, ['sse3', 'generic']), ['path/sse3', 'path/generic'])
+
+    def test_get_avx(self):
+        """
+        Test that avx are correctly filtered
+        """
+        self.assertEqual(avail_wheels.filter_search_paths(self.search_paths, ['avx']), ['path/avx'])
+        self.assertEqual(avail_wheels.filter_search_paths(self.search_paths, ['avx', 'generic']), ['path/avx', 'path/generic'])
+
+    def test_get_avx2(self):
+        """
+        Test that avx2 are correctly filtered
+        """
+        self.assertEqual(avail_wheels.filter_search_paths(self.search_paths, ['avx2']), ['path/avx2'])
+        self.assertEqual(avail_wheels.filter_search_paths(self.search_paths, ['avx2', 'generic']), ['path/avx2', 'path/generic'])
+
+    def test_get_avx512(self):
+        """
+        Test that avx512 are correctly filtered
+        """
+        self.assertEqual(avail_wheels.filter_search_paths(self.search_paths, ['avx512']), ['path/avx512'])
+        self.assertEqual(avail_wheels.filter_search_paths(self.search_paths, ['avx512', 'generic']), ['path/avx512', 'path/generic'])
+
+
+class Test_get_search_paths(unittest.TestCase):
+    def setUp(self):
+        self.wheelhouse = "wheelhouse_test_dir"
+        self.raw_filenames = {'netCDF4': ["netCDF4-1.3.1-cp27-cp27mu-linux_x86_64.whl",
+                                          "netCDF4-1.3.1-cp35-cp35m-linux_x86_64.whl",
+                                          "netCDF4-1.2.0-cp36-cp36m-linux_x86_64.whl",
+                                          "netCDF4-1.3.1-cp36-cp36m-linux_x86_64.whl"],
+                              'torch_cpu': ["torch_cpu-0.4.0+computecanada-cp36-cp36m-linux_x86_64.whl"]}
+        self.pip_config_file_str = """
+        [wheel]
+        find-links = wheelhouse_test_dir/nix/avx2 wheelhouse_test_dir/nix/generic wheelhouse_test_dir/generic
+        """
+        self.pip_config_file = 'test-pip-avx2.conf'
+
+        # Create the wheelhouse and its subdirs, files.
+        for stack in ['generic', 'nix']:
+            for arch in avail_wheels.AVAILABLE_ARCHITECTURES:
+                os.makedirs(f"{self.wheelhouse}/{stack}/{arch}", exist_ok=True)
+                for files in self.raw_filenames.values():
+                    for file in files:
+                        Path(f"{self.wheelhouse}/{stack}/{arch}/{file}").touch()
+
+        with open(self.pip_config_file, 'w') as f:
+            f.write(self.pip_config_file_str)
+
+        os.environ['WHEELHOUSE'] = self.wheelhouse
+        os.environ['PIP_CONFIG_FILE'] = self.pip_config_file
+
+        reload(avail_wheels)  # Must reload script for env to be known
+
+    def tearDown(self):
+        # Delete wheelhouse
+        for stack in ['generic', 'nix']:
+            for arch in avail_wheels.AVAILABLE_ARCHITECTURES:
+                for files in self.raw_filenames.values():
+                    for file in files:
+                        os.remove(f"{self.wheelhouse}/{stack}/{arch}/{file}")
+                os.rmdir(f"{self.wheelhouse}/{stack}/{arch}")
+            os.rmdir(f"{self.wheelhouse}/{stack}")
+        os.rmdir(self.wheelhouse)
+
+        os.remove(self.pip_config_file)
+
+        del os.environ['WHEELHOUSE']
+        if 'PIP_CONFIG_FILE' in os.environ:
+            del os.environ['PIP_CONFIG_FILE']
+
+    def test_no_pip_config_file(self):
+        """
+        Test that no PIP_CONFIG_FILE environment variable exists, entire wheelhouse is actually searched.
+        """
+        # Ensure the test run clears of environ
+        if 'PIP_CONFIG_FILE' in os.environ:
+            del os.environ['PIP_CONFIG_FILE']
+        reload(avail_wheels)  # Must reload script for env to be known
+
+        other = sorted([f'{self.wheelhouse}/{stack}/{arch}' for stack in ['generic', 'nix'] for arch in avail_wheels.AVAILABLE_ARCHITECTURES])
+        res = sorted(avail_wheels.get_search_paths())
+
+        self.assertEqual(res, other)
+
+    def test_pip_config_file_empty(self):
+        """
+        Test that PIP_CONFIG_FILE environment variable exists but overriden, entire wheelhouse is actually searched.
+        """
+        # Ensure the test run clears of environ
+        os.environ['PIP_CONFIG_FILE'] = ""
+        reload(avail_wheels)  # Must reload script for env to be known
+
+        other = sorted([f'{self.wheelhouse}/{stack}/{arch}' for stack in ['generic', 'nix'] for arch in avail_wheels.AVAILABLE_ARCHITECTURES])
+        res = sorted(avail_wheels.get_search_paths())
+
+        self.assertEqual(res, other)
+
+    def test_pip_config_file_exists(self):
+        """
+        Test that PIP_CONFIG_FILE environment variable exists and use the conf file.
+        """
+        other = sorted(['wheelhouse_test_dir/nix/avx2', 'wheelhouse_test_dir/nix/generic', 'wheelhouse_test_dir/generic'])
+        res = sorted(avail_wheels.get_search_paths())
+
+        self.assertEqual(res, other)
 
 
 if __name__ == '__main__':
