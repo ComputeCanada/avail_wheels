@@ -11,11 +11,12 @@ import configparser
 from tabulate import tabulate
 from packaging import version
 from itertools import product
+from glob import glob
 
 __version__ = "1.1.1"
 
 WHEELHOUSE = os.environ.get("WHEELHOUSE", "/cvmfs/soft.computecanada.ca/custom/python/wheelhouse")
-PYTHONS_DIR = os.environ.get("PYTHONS_DIR", "/cvmfs/soft.computecanada.ca/easybuild/software/2017/Core/python")
+PYTHONS_DIR = glob(os.environ.get("PYTHONS_DIR", "/cvmfs/soft.computecanada.ca/easybuild/software/20*/Core/python"))
 PIP_CONFIG_FILE = os.environ.get("PIP_CONFIG_FILE")
 
 AVAILABLE_STACKS = sorted(['generic', 'nix', 'gentoo'])
@@ -24,7 +25,7 @@ CURRENT_ARCHITECTURE = os.environ.get("RSNT_ARCH")
 AVAILABLE_ARCHITECTURES = sorted(['sse3', 'avx', 'avx2', 'avx512', 'generic'])
 ARCHITECTURES = ['generic', CURRENT_ARCHITECTURE]
 
-AVAILABLE_PYTHONS = sorted({pv[:3] for pv in os.listdir(PYTHONS_DIR) if re.match(r"\d+.\d+(.\d+)?", pv)})  # Get the available python versions from CVMFS
+AVAILABLE_PYTHONS = sorted({pv[:3] for python_dir in PYTHONS_DIR for pv in os.listdir(python_dir) if re.match(r"\d+.\d+(.\d+)?", pv)})  # Get the available python versions from CVMFS
 CURRENT_PYTHON = os.environ.get("EBVERSIONPYTHON")
 # {'2.7': ['py2.py3', 'py2', 'cp27'], '3.5': ['py2.py3', 'py3', 'cp35'], ...}
 COMPATIBLE_PYTHON = {ap: ['py2.py3', f"py{ap[0]}", f"cp{ap[0]}{ap[2]}"] for ap in AVAILABLE_PYTHONS}
