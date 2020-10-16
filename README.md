@@ -18,14 +18,9 @@ pip install -r requirements.txt
 
 ## Usage and Examples
 ```
-usage: avail_wheels [-h] [-n NAME [NAME ...]] [-v VERSION [VERSION ...] |
-                    --all_versions]
-                    [-p {2.7,3.5,3.6,3.7} [{2.7,3.5,3.6,3.7} ...] |
-                    --all_pythons]
-                    [-a {avx,avx2,avx512,generic,sse3} [{avx,avx2,avx512,generic,sse3} ...]
-                    | --all_archs] [--mediawiki] [--raw]
-                    [--column {name,version,build,python,abi,platform,arch} [{name,version,build,python,abi,platform,arch} ...]]
-                    [--condense] [--not-available]
+usage: avail_wheels [-h] [-n NAME [NAME ...]] [-v VERSION [VERSION ...] | --all_versions | --all-versions] [-p {2.7,3.5,3.6,3.7,3.8} [{2.7,3.5,3.6,3.7,3.8} ...] | --all_pythons | --all-pythons]
+                    [-a {avx,avx2,avx512,generic,sse3} [{avx,avx2,avx512,generic,sse3} ...] | --all_archs | --all-archs] [--mediawiki] [--raw]
+                    [--column {name,version,build,python,abi,platform,arch} [{name,version,build,python,abi,platform,arch} ...]] [--condense] [--not-available]
                     [wheel [wheel ...]]
 
 List currently available wheels patterns from the wheelhouse. By default, it will:
@@ -34,43 +29,38 @@ List currently available wheels patterns from the wheelhouse. By default, it wil
     - only show you versions that are compatible with the CPU architecture that you are currently running on.
 
 positional arguments:
-  wheel                 Specify the name to look for (case insensitive).
-                        (default: ['*'])
+  wheel                 Specify the name to look for (case insensitive). (default: ['*'])
 
 optional arguments:
   -h, --help            show this help message and exit
   -n NAME [NAME ...], --name NAME [NAME ...]
-                        Specify the name to look for (case insensitive).
-                        (default: None)
+                        Specify the name to look for (case insensitive). (default: None)
 
 version:
   -v VERSION [VERSION ...], --version VERSION [VERSION ...]
                         Specify the version to look for. (default: ['*'])
   --all_versions        Show all versions of each wheel. (default: False)
+  --all-versions
 
 python:
-  -p {2.7,3.5,3.6,3.7} [{2.7,3.5,3.6,3.7} ...], --python {2.7,3.5,3.6,3.7} [{2.7,3.5,3.6,3.7} ...]
-                        Specify the python versions to look for. (default:
-                        ['2.7', '3.5', '3.6', '3.7'])
+  -p {2.7,3.5,3.6,3.7,3.8} [{2.7,3.5,3.6,3.7,3.8} ...], --python {2.7,3.5,3.6,3.7,3.8} [{2.7,3.5,3.6,3.7,3.8} ...]
+                        Specify the python versions to look for. (default: ['2.7', '3.5', '3.6', '3.7', '3.8'])
   --all_pythons         Show all pythons of each wheel. (default: False)
+  --all-pythons
 
 architecture:
   -a {avx,avx2,avx512,generic,sse3} [{avx,avx2,avx512,generic,sse3} ...], --arch {avx,avx2,avx512,generic,sse3} [{avx,avx2,avx512,generic,sse3} ...]
-                        Specify the architecture to look for. (default:
-                        ['generic', None])
-  --all_archs           Show all architectures of each wheel. (default: False)
+                        Specify the architecture to look for from the paths configured in $PIP_CONFIG_FILE. (default: None)
+  --all_archs           Show all architectures of each wheel from the paths configured in $PIP_CONFIG_FILE. (default: False)
+  --all-archs
 
 display:
   --mediawiki           Print a mediawiki table. (default: False)
-  --raw                 Print raw files names. Has precedence over other
-                        arguments of this group. (default: False)
+  --raw                 Print raw files names. Has precedence over other arguments of this group. (default: False)
   --column {name,version,build,python,abi,platform,arch} [{name,version,build,python,abi,platform,arch} ...]
-                        Specify and order the columns to display. (default:
-                        ['name', 'version', 'build', 'python', 'arch'])
-  --condense            Condense wheel information into one line. (default:
-                        False)
-  --not-available       Also display wheels that were not available. (default:
-                        False)
+                        Specify and order the columns to display. (default: ['name', 'version', 'build', 'python', 'arch'])
+  --condense            Condense wheel information into one line. (default: False)
+  --not-available       Also display wheels that were not available. (default: False)
 
 Examples:
     avail_wheels "*cdf*"
@@ -83,10 +73,12 @@ For more information, see: https://docs.computecanada.ca/wiki/Python#Listing_ava
 ```
 
 ## Development
-Set environment variables to mock the wheelhouse.
+Set environment variables to mock the CVMFS.
 ```bash
-export WHEELHOUSE=$(pwd)/cvmfs/soft.computecanada.ca/custom/python/wheelhouse;
-export PYTHONS_DIR=$(pwd)/cvmfs/soft.computecanada.ca/easybuild/software/2017/Core/python;
+export WHEELHOUSE=$PWD/cvmfs/soft.computecanada.ca/custom/python/wheelhouse;
+export PYTHONS_DIR=$PWD'/cvmfs/soft.computecanada.ca/easybuild/software/20*/Core/python';
+export PIP_CONFIG_FILE=$PWD/pip-avx2.conf;
+export RSNT_ARCH=avx2;
 ```
 
 ## Tests
