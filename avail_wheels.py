@@ -304,6 +304,8 @@ def create_argparser():
     display_group.add_argument("--condense", action='store_true', help="Condense wheel information into one line.")
     display_group.add_argument("--not-available", action='store_true', help="Also display wheels that were not available.")
 
+    parser.add_argument("--all", action='store_true', help="Same as: --all_versions --all_pythons --all_archs")
+
     return parser
 
 
@@ -318,6 +320,11 @@ def main():
 
     # Pip support names with `-`, but wheel convert `-` to `_`.
     args.wheel = normalize_names(args.wheel)
+
+    if args.all:
+        args.all_archs = True
+        args.all_pythons = True
+        args.all_versions = True
 
     # Specifying `all_arch` set `--arch` to None, hence returns all search paths from PIP_CONFIG_FILE
     search_paths = filter_search_paths(get_search_paths(), args.arch)
