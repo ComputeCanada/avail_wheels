@@ -155,10 +155,14 @@ class Test_available_architectures(unittest.TestCase):
 
 
 class Test_available_pythons(unittest.TestCase):
+    PYTHON_DIRS__KEY = "PYTHON_DIRS"
+
     def setUp(self):
         """
         Set up the test with specific context.
         """
+        os.environ.pop(self.PYTHON_DIRS__KEY, None)
+
         self.env = RuntimeEnvironment()
 
     def test_available_pythons(self):
