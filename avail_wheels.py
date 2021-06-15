@@ -17,8 +17,6 @@ __version__ = "1.2.0"
 
 env = RuntimeEnvironment()
 
-ARCHITECTURES = ['generic', env.current_architecture]
-
 AVAILABLE_HEADERS = ['name', 'version', 'build', 'python', 'abi', 'platform', 'arch']
 HEADERS = ['name', 'version', 'build', 'python', 'arch']
 

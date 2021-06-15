@@ -297,11 +297,6 @@ class Test_parse_args_method(unittest.TestCase):
         self.current_architecture = arch
         self.current_python = python
 
-        if arch:
-            os.environ['RSNT_ARCH'] = arch
-        elif 'RSNT_ARCH' in os.environ:
-            del os.environ['RSNT_ARCH']
-
         if python:
             os.environ['EBVERSIONPYTHON'] = python
         elif 'EBVERSIONPYTHON' in os.environ:
@@ -311,20 +306,14 @@ class Test_parse_args_method(unittest.TestCase):
         self.parser = avail_wheels.create_argparser()
 
     def test_default_arch(self):
-        default_arch = ['generic', self.current_architecture]
         self.parser.parse_args([])
-        self.assertEqual(avail_wheels.env.current_architecture, self.current_architecture)
-        self.assertEqual(avail_wheels.ARCHITECTURES, default_arch)
         self.assertEqual(self.parser.get_default('arch'), None)
 
     def test_default_noarch(self):
         """ Special case (eg on personnal system). """
         self.redoSetUp()  # Need to overwrite setUp
-        default_arch = ['generic', self.current_architecture]
         self.parser.parse_args([])
 
-        self.assertEqual(avail_wheels.env.current_architecture, self.current_architecture)
-        self.assertEqual(avail_wheels.ARCHITECTURES, default_arch)
         self.assertEqual(self.parser.get_default('arch'), None)
 
     def test_default_python(self):
