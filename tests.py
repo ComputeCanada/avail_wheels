@@ -183,7 +183,7 @@ class Test_get_wheels_method(unittest.TestCase):
 
         # Create the wheelhouse and its subdirs, files.
         for stack in [self.current_stack]:
-            for arch in avail_wheels.AVAILABLE_ARCHITECTURES:
+            for arch in avail_wheels.env.available_architectures:
                 os.makedirs(f"{self.wheelhouse}/{stack}/{arch}", exist_ok=True)
                 for files in self.raw_filenames.values():
                     for file in files:
@@ -192,7 +192,7 @@ class Test_get_wheels_method(unittest.TestCase):
     def tearDown(self):
         # Delete wheelhouse
         for stack in [self.current_stack]:
-            for arch in avail_wheels.AVAILABLE_ARCHITECTURES:
+            for arch in avail_wheels.env.available_architectures:
                 for files in self.raw_filenames.values():
                     for file in files:
                         os.remove(f"{self.wheelhouse}/{stack}/{arch}/{file}")
@@ -201,14 +201,14 @@ class Test_get_wheels_method(unittest.TestCase):
         os.rmdir(self.wheelhouse)
 
     def test_get_wheels_all_archs_all_pythons(self):
-        search_paths = [f"{self.wheelhouse}/{self.current_stack}/{arch}" for arch in avail_wheels.AVAILABLE_ARCHITECTURES]
+        search_paths = [f"{self.wheelhouse}/{self.current_stack}/{arch}" for arch in avail_wheels.env.available_architectures]
         other = {'netCDF4': [], 'torch_cpu': []}
-        for arch in avail_wheels.AVAILABLE_ARCHITECTURES:
+        for arch in avail_wheels.env.available_architectures:
             for wheel_name, files in self.raw_filenames.items():
                 for file in files:
                     other[wheel_name].append(avail_wheels.Wheel(f"{arch}/{file}"))
 
-        ret = avail_wheels.get_wheels(paths=search_paths, pythons=avail_wheels.AVAILABLE_PYTHONS, names_versions=product('*', '*'), latest=False)
+        ret = avail_wheels.get_wheels(paths=search_paths, pythons=avail_wheels.env.available_pythons, names_versions=product('*', '*'), latest=False)
         self.assertEqual(ret, other)
 
     def test_get_wheels_arch_all_pythons(self):
@@ -219,7 +219,7 @@ class Test_get_wheels_method(unittest.TestCase):
             for file in files:
                 other[wheel_name].append(avail_wheels.Wheel(f"{arch}/{file}"))
 
-        ret = avail_wheels.get_wheels(paths=search_paths, pythons=avail_wheels.AVAILABLE_PYTHONS, names_versions=product('*', '*'), latest=False)
+        ret = avail_wheels.get_wheels(paths=search_paths, pythons=avail_wheels.env.available_pythons, names_versions=product('*', '*'), latest=False)
         self.assertEqual(ret, other)
 
     def test_get_wheels_arch_python(self):
@@ -313,7 +313,7 @@ class Test_parse_args_method(unittest.TestCase):
     def test_default_arch(self):
         default_arch = ['generic', self.current_architecture]
         self.parser.parse_args([])
-        self.assertEqual(avail_wheels.CURRENT_ARCHITECTURE, self.current_architecture)
+        self.assertEqual(avail_wheels.env.current_architecture, self.current_architecture)
         self.assertEqual(avail_wheels.ARCHITECTURES, default_arch)
         self.assertEqual(self.parser.get_default('arch'), None)
 
@@ -323,7 +323,7 @@ class Test_parse_args_method(unittest.TestCase):
         default_arch = ['generic', self.current_architecture]
         self.parser.parse_args([])
 
-        self.assertEqual(avail_wheels.CURRENT_ARCHITECTURE, self.current_architecture)
+        self.assertEqual(avail_wheels.env.current_architecture, self.current_architecture)
         self.assertEqual(avail_wheels.ARCHITECTURES, default_arch)
         self.assertEqual(self.parser.get_default('arch'), None)
 
@@ -331,7 +331,7 @@ class Test_parse_args_method(unittest.TestCase):
         default_python = ['3.6']
         self.parser.parse_args([])
 
-        self.assertEqual(avail_wheels.CURRENT_PYTHON, self.current_python)
+        self.assertEqual(avail_wheels.env.current_python, self.current_python)
         self.assertEqual(self.parser.get_default('python'), default_python)
 
     def test_default_nopython(self):
@@ -339,8 +339,8 @@ class Test_parse_args_method(unittest.TestCase):
         self.redoSetUp()  # Need to overwrite setUp
         self.parser.parse_args([])
 
-        self.assertEqual(avail_wheels.CURRENT_PYTHON, self.current_python)
-        self.assertEqual(self.parser.get_default('python'), avail_wheels.AVAILABLE_PYTHONS)
+        self.assertEqual(avail_wheels.env.current_python, self.current_python)
+        self.assertEqual(self.parser.get_default('python'), avail_wheels.env.available_pythons)
 
     def test_default_name(self):
         self.parser.parse_args([])
@@ -495,7 +495,7 @@ class Test_is_compatible_method(unittest.TestCase):
         self.assertFalse(avail_wheels.is_compatible(self.wheel, ['3.5']))
 
     def test_is_compatible_many(self):
-        self.assertTrue(avail_wheels.is_compatible(self.wheel, avail_wheels.AVAILABLE_PYTHONS))
+        self.assertTrue(avail_wheels.is_compatible(self.wheel, avail_wheels.env.available_pythons))
 
 
 class Test_match_file(unittest.TestCase):
@@ -591,7 +591,7 @@ class Test_normalize_names(unittest.TestCase):
 
 class Test_filter_search_paths(unittest.TestCase):
     def setUp(self):
-        self.search_paths = [f'path/{path}' for path in avail_wheels.AVAILABLE_ARCHITECTURES]
+        self.search_paths = [f'path/{path}' for path in avail_wheels.env.available_architectures]
 
     def test_get_all_search_paths(self):
         """
@@ -645,7 +645,7 @@ class Test_get_search_paths(unittest.TestCase):
 
         # Create the wheelhouse and its subdirs, files.
         for stack in ['generic', 'nix']:
-            for arch in avail_wheels.AVAILABLE_ARCHITECTURES:
+            for arch in avail_wheels.env.available_architectures:
                 os.makedirs(f"{self.wheelhouse}/{stack}/{arch}", exist_ok=True)
                 for files in self.raw_filenames.values():
                     for file in files:
@@ -662,7 +662,7 @@ class Test_get_search_paths(unittest.TestCase):
     def tearDown(self):
         # Delete wheelhouse
         for stack in ['generic', 'nix']:
-            for arch in avail_wheels.AVAILABLE_ARCHITECTURES:
+            for arch in avail_wheels.env.available_architectures:
                 for files in self.raw_filenames.values():
                     for file in files:
                         os.remove(f"{self.wheelhouse}/{stack}/{arch}/{file}")
@@ -685,7 +685,7 @@ class Test_get_search_paths(unittest.TestCase):
             del os.environ['PIP_CONFIG_FILE']
         reload(avail_wheels)  # Must reload script for env to be known
 
-        other = sorted([f'{self.wheelhouse}/{stack}/{arch}' for stack in ['generic', 'nix'] for arch in avail_wheels.AVAILABLE_ARCHITECTURES])
+        other = sorted([f'{self.wheelhouse}/{stack}/{arch}' for stack in ['generic', 'nix'] for arch in avail_wheels.env.available_architectures])
         res = sorted(avail_wheels.get_search_paths())
 
         self.assertEqual(res, other)
@@ -698,7 +698,7 @@ class Test_get_search_paths(unittest.TestCase):
         os.environ['PIP_CONFIG_FILE'] = ""
         reload(avail_wheels)  # Must reload script for env to be known
 
-        other = sorted([f'{self.wheelhouse}/{stack}/{arch}' for stack in ['generic', 'nix'] for arch in avail_wheels.AVAILABLE_ARCHITECTURES])
+        other = sorted([f'{self.wheelhouse}/{stack}/{arch}' for stack in ['generic', 'nix'] for arch in avail_wheels.env.available_architectures])
         res = sorted(avail_wheels.get_search_paths())
 
         self.assertEqual(res, other)

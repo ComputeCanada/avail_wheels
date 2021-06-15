@@ -11,24 +11,13 @@ import configparser
 from tabulate import tabulate
 from packaging import version
 from itertools import product
-from glob import glob
+from runtime_env import RuntimeEnvironment
 
 __version__ = "1.2.0"
 
-WHEELHOUSE = os.environ.get("WHEELHOUSE", "/cvmfs/soft.computecanada.ca/custom/python/wheelhouse")
-PYTHONS_DIR = glob(os.environ.get("PYTHONS_DIR", "/cvmfs/soft.computecanada.ca/easybuild/software/20*/Core/python"))
-PIP_CONFIG_FILE = os.environ.get("PIP_CONFIG_FILE")
+env = RuntimeEnvironment()
 
-AVAILABLE_STACKS = sorted(['generic', 'nix', 'gentoo'])
-
-CURRENT_ARCHITECTURE = os.environ.get("RSNT_ARCH")
-AVAILABLE_ARCHITECTURES = sorted(['sse3', 'avx', 'avx2', 'avx512', 'generic'])
-ARCHITECTURES = ['generic', CURRENT_ARCHITECTURE]
-
-AVAILABLE_PYTHONS = sorted({pv[:3] for python_dir in PYTHONS_DIR for pv in os.listdir(python_dir) if re.match(r"\d+.\d+(.\d+)?", pv)})  # Get the available python versions from CVMFS
-CURRENT_PYTHON = os.environ.get("EBVERSIONPYTHON")
-# {'2.7': ['py2.py3', 'py2', 'cp27'], '3.5': ['py2.py3', 'py3', 'cp35'], ...}
-COMPATIBLE_PYTHON = {ap: ['py2.py3', f"py{ap[0]}", f"cp{ap[0]}{ap[2]}"] for ap in AVAILABLE_PYTHONS}
+ARCHITECTURES = ['generic', env.current_architecture]
 
 AVAILABLE_HEADERS = ['name', 'version', 'build', 'python', 'abi', 'platform', 'arch']
 HEADERS = ['name', 'version', 'build', 'python', 'arch']
@@ -93,7 +82,7 @@ def is_compatible(wheel, pythons):
     Verify that the wheel python version is compatible with currently supported python versions.
     """
     for p in pythons or []:
-        if wheel.python in COMPATIBLE_PYTHON[p]:
+        if wheel.python in env.compatible_pythons[p]:
             return True
     return False
 
@@ -145,6 +134,8 @@ def latest_versions(wheels):
     """
     Returns only the latest version of each wheel.
     """
+
+    # use an ordereddict instead
     latests = {}
 
     for wheel_name, wheel_list in wheels.items():
@@ -238,11 +229,11 @@ def get_search_paths():
     """
     Gets the search paths from the $PIP_CONFIG_FILE or start at root of the wheelhouse.
     """
-    if PIP_CONFIG_FILE is None or PIP_CONFIG_FILE == "":
-        return [os.path.join(root, d) for root, dirs, _ in os.walk(WHEELHOUSE) if root[len(WHEELHOUSE):].count(os.sep) == 1 for d in dirs]
+    if env.pip_config_file is None or env.pip_config_file == "":
+        return [os.path.join(root, d) for root, dirs, _ in os.walk(env.wheelhouse) if root[len(env.wheelhouse):].count(os.sep) == 1 for d in dirs]
 
     cfg = configparser.ConfigParser()
-    cfg.read(PIP_CONFIG_FILE)
+    cfg.read(env.pip_config_file)
     return cfg['wheel']['find-links'].split(' ')
 
 
@@ -285,15 +276,15 @@ def create_argparser():
 
     python_group = parser.add_argument_group('python')
     parser.add_mutually_exclusive_group()._group_actions.extend([
-        python_group.add_argument("-p", "--python", choices=AVAILABLE_PYTHONS, nargs='+', default=[CURRENT_PYTHON[:3]] if CURRENT_PYTHON else AVAILABLE_PYTHONS, help="Specify the python versions to look for."),
+        python_group.add_argument("-p", "--python", choices=env.available_pythons, nargs='+', default=[env.current_python[:3]] if env.current_python else env.available_pythons, help="Specify the python versions to look for."),
         python_group.add_argument("--all_pythons", action='store_true', help="Show all pythons of each wheel."),
         python_group.add_argument("--all-pythons", action='store_true', dest="all_pythons"),
     ])
 
     arch_group = parser.add_argument_group('architecture')
     parser.add_mutually_exclusive_group()._group_actions.extend([
-        arch_group.add_argument("-a", "--arch", choices=AVAILABLE_ARCHITECTURES, nargs='+', help=f"Specify the architecture to look for from the paths configured in {PIP_CONFIG_FILE}."),
-        arch_group.add_argument("--all_archs", action='store_true', help=f"Show all architectures of each wheel from the paths configured in {PIP_CONFIG_FILE}."),
+        arch_group.add_argument("-a", "--arch", choices=env.available_architectures, nargs='+', help=f"Specify the architecture to look for from the paths configured in {env.pip_config_file}."),
+        arch_group.add_argument("--all_archs", action='store_true', help=f"Show all architectures of each wheel from the paths configured in {env.pip_config_file}."),
         arch_group.add_argument("--all-archs", action='store_true', dest="all_archs")
     ])
 
@@ -321,7 +312,7 @@ def main():
 
     # Specifying `all_arch` set `--arch` to None, hence returns all search paths from PIP_CONFIG_FILE
     search_paths = filter_search_paths(get_search_paths(), args.arch)
-    pythons = args.python if not args.all_pythons else AVAILABLE_PYTHONS
+    pythons = args.python if not args.all_pythons else env.available_pythons
     names_versions = product(args.wheel, args.version)
     latest = not args.all_versions and args.version == DEFAULT_STAR_ARG
 
