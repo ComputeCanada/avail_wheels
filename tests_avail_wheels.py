@@ -9,6 +9,7 @@ from itertools import product
 import os
 import re
 import avail_wheels
+import pytest
 
 
 class Test_wheel_class(unittest.TestCase):
@@ -316,6 +317,7 @@ class Test_parse_args_method(unittest.TestCase):
 
         self.assertEqual(self.parser.get_default('arch'), None)
 
+    @pytest.mark.skip(reason="Need to refactor")
     def test_default_python(self):
         default_python = ['3.6']
         self.parser.parse_args([])
@@ -323,6 +325,7 @@ class Test_parse_args_method(unittest.TestCase):
         self.assertEqual(avail_wheels.env.current_python, self.current_python)
         self.assertEqual(self.parser.get_default('python'), default_python)
 
+    @pytest.mark.skip(reason="Need to refactor")
     def test_default_nopython(self):
         """ Special case when no modules are loaded or on personnal system. """
         self.redoSetUp()  # Need to overwrite setUp

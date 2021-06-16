@@ -1,6 +1,17 @@
 import unittest
 import os
+import sys
 from runtime_env import RuntimeEnvironment
+from pytest import MonkeyPatch
+
+
+class MonkeyTest(unittest.TestCase):
+    def setUp(self):
+        self.monkeypatch = MonkeyPatch()
+        self.env = RuntimeEnvironment()
+
+    def tearDown(self):
+        self.monkeypatch.undo()
 
 
 class Test_wheelhouse(unittest.TestCase):
@@ -57,31 +68,34 @@ class Test_pip_config_file(unittest.TestCase):
         self.assertEqual(self.env.pip_config_file, "pip.conf")
 
 
-class Test_current_python(unittest.TestCase):
-    MODULE_PYTHON_VER__KEY = "EBVERSIONPYTHON"
-
-    def setUp(self, current_python=None):
-        """
-        Set up the test with specific context.
-        """
-        os.environ.pop(self.MODULE_PYTHON_VER__KEY, None)
-        if current_python is not None:
-            os.environ[self.MODULE_PYTHON_VER__KEY] = current_python
-
-        self.env = RuntimeEnvironment()
-
+class Test_current_python(MonkeyTest):
     def test_current_python_default(self):
         """
         Test that the default current_python is None
         """
+        self.monkeypatch.delenv('VIRTUAL_ENV', raising=False)
+        self.monkeypatch.delenv('EBVERSIONPYTHON', raising=False)
+
         self.assertIsNone(self.env.current_python)
 
-    def test_current_python_variable(self):
+    def test_current_python_variable_module(self):
         """
         Test that the current python version is read from EBVERSIONPYTHON enviroment variable.
         """
-        self.setUp(current_python="3.8.2")
-        self.assertEqual(self.env.current_python, "3.8.2")
+        v = "3.8.2"
+        self.monkeypatch.setenv('EBVERSIONPYTHON', v)
+        self.monkeypatch.delenv('VIRTUAL_ENV', raising=False)
+
+        self.assertEqual(self.env.current_python, v)
+
+    def test_current_python_variable_venv(self):
+        """
+        Test that the current python version is read from VIRTUAL_ENV enviroment variable.
+        """
+        v = sys.version_info
+        self.monkeypatch.delenv('EBVERSIONPYTHON', raising=False)
+
+        self.assertEqual(self.env.current_python, f"{v.major}.{v.minor}.{v.micro}")
 
 
 class Test_python_dirs(unittest.TestCase):

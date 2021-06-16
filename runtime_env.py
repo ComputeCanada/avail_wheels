@@ -2,6 +2,7 @@
 
 import os
 from glob import glob
+import platform
 
 
 class RuntimeEnvironment(object):
@@ -73,7 +74,11 @@ class RuntimeEnvironment(object):
             Current Python version : major.minor.micro, or None
         """
         if not self._current_python:
-            self._current_python = os.environ.get("EBVERSIONPYTHON", None)
+            # virtual env. has precedence on modules
+            if 'VIRTUAL_ENV' in os.environ:
+                self._current_python = platform.python_version()
+            else:
+                self._current_python = os.environ.get("EBVERSIONPYTHON", None)
 
         return self._current_python
 
