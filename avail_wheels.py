@@ -265,6 +265,7 @@ def create_argparser():
     parser.add_argument("wheel", nargs="*", default=DEFAULT_STAR_ARG, help="Specify the name to look for (case insensitive).")
     parser.add_argument("-n", "--name", nargs="+", default=None, help="Specify the name to look for (case insensitive).")
     parser.add_argument("--all", action='store_true', help="Same as: --all_versions --all_pythons --all_archs")
+    parser.add_argument("-r", "--requirement", dest="requirements", nargs="+", default=[], metavar="file", help="Install from the given requirements file. This option can be used multiple times.")
 
     version_group = parser.add_argument_group('version')
     parser.add_mutually_exclusive_group()._group_actions.extend([

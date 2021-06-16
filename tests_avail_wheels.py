@@ -472,6 +472,34 @@ class Test_parse_args_method(unittest.TestCase):
         self.assertIsInstance(args.wheel, list)
         self.assertEqual(args.wheel, ['*'])
 
+    def test_requirement_noarg(self):
+        """
+        Test no value for the option.
+        """
+        temp_stdout = StringIO()
+        with redirect_stderr(temp_stdout):
+            with self.assertRaises(SystemExit):
+                with self.assertRaises(ArgumentError):
+                    self.parser.parse_args(['--requirement'])
+
+    def test_requirement_file(self):
+        """
+        Test one requirements file.
+        """
+        args = self.parser.parse_args(["--requirement", "requirements.txt"])
+
+        self.assertIsInstance(args.requirements, list)
+        self.assertEqual(args.requirements, ["requirements.txt"])
+
+    def test_requirement_files(self):
+        """
+        Test multiple requirements files.
+        """
+        args = self.parser.parse_args(["--requirement", "requirements.txt", "reqs.txt"])
+
+        self.assertIsInstance(args.requirements, list)
+        self.assertEqual(args.requirements, ["requirements.txt", "reqs.txt"])
+
 
 class Test_is_compatible_method(unittest.TestCase):
     def setUp(self):
