@@ -264,6 +264,7 @@ def create_argparser():
 
     parser.add_argument("wheel", nargs="*", default=DEFAULT_STAR_ARG, help="Specify the name to look for (case insensitive).")
     parser.add_argument("-n", "--name", nargs="+", default=None, help="Specify the name to look for (case insensitive).")
+    parser.add_argument("--all", action='store_true', help="Same as: --all_versions --all_pythons --all_archs")
 
     version_group = parser.add_argument_group('version')
     parser.add_mutually_exclusive_group()._group_actions.extend([
@@ -307,6 +308,9 @@ def main():
 
     # Pip support names with `-`, but wheel convert `-` to `_`.
     args.wheel = normalize_names(args.wheel)
+
+    if args.all:
+        args.all_archs, args.all_versions, args.all_pythons = True, True, True
 
     # Specifying `all_arch` set `--arch` to None, hence returns all search paths from PIP_CONFIG_FILE
     search_paths = filter_search_paths(get_search_paths(), args.arch)
