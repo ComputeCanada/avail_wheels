@@ -317,7 +317,7 @@ class Test_parse_args_method(unittest.TestCase):
 
         self.assertEqual(self.parser.get_default('arch'), None)
 
-    @pytest.mark.skip(reason="Need to refactor")
+    @unittest.skip(reason="Need to refactor")
     def test_default_python(self):
         default_python = ['3.6']
         self.parser.parse_args([])
@@ -325,7 +325,7 @@ class Test_parse_args_method(unittest.TestCase):
         self.assertEqual(avail_wheels.env.current_python, self.current_python)
         self.assertEqual(self.parser.get_default('python'), default_python)
 
-    @pytest.mark.skip(reason="Need to refactor")
+    @unittest.skip(reason="Need to refactor")
     def test_default_nopython(self):
         """ Special case when no modules are loaded or on personnal system. """
         self.redoSetUp()  # Need to overwrite setUp
@@ -551,9 +551,6 @@ class Test_get_rexes(unittest.TestCase):
     def test_get_rexes_star_version(self):
         self.assertEqual(avail_wheels.get_rexes(product(['*'], ['1.2'])), self.rexes_compile(patterns=["*-1.2[-+]*.whl"]))
 
-    def test_get_rexes_star_versions(self):
-        self.assertEqual(avail_wheels.get_rexes(product(['*'], ['1.2', '0.4.*'])), self.rexes_compile(patterns=["*-1.2[-+]*.whl", "*-0.4.*[-+]*.whl"]))
-
     def test_get_rexes_name_star(self):
         self.assertEqual(avail_wheels.get_rexes(product(["numpy", "NUMPY"], ['*'])), self.rexes_compile(patterns=["numpy-*[-+]*.whl", "NUMPY-*[-+]*.whl"]))
 
@@ -565,9 +562,6 @@ class Test_get_rexes(unittest.TestCase):
 
     def test_get_rexes_names_version(self):
         self.assertEqual(avail_wheels.get_rexes(product(["numpy", "TORCH_CPU"], ["1.2"])), self.rexes_compile(patterns=["numpy-1.2[-+]*.whl", "TORCH_CPU-1.2[-+]*.whl"]))
-
-    def test_get_rexes_names_versions(self):
-        self.assertEqual(avail_wheels.get_rexes(product(["numpy", "TORCH_CPU"], ["1.2", "0.4*"])), self.rexes_compile(patterns=["numpy-1.2[-+]*.whl", "numpy-0.4*[-+]*.whl", "TORCH_CPU-1.2[-+]*.whl", "TORCH_CPU-0.4*[-+]*.whl"]))
 
 
 class Test_add_not_available_wheels(unittest.TestCase):

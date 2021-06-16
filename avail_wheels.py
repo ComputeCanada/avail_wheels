@@ -253,7 +253,7 @@ def create_argparser():
     epilog += "    avail_wheels \"*cdf*\"\n"
     epilog += "    avail_wheels numpy --version \"1.15*\"\n"
     epilog += "    avail_wheels numpy --all_versions\n"
-    epilog += "    avail_wheels numpy torch_cpu --version \"1.15*\" 0.4.0\n"
+    epilog += "    avail_wheels numpy torch_cpu --version \"1.15*\"\n"
     epilog += "    avail_wheels numpy --python 2.7 3.6\n"
     epilog += "\nFor more information, see: https://docs.computecanada.ca/wiki/Python#Listing_available_wheels"
 
@@ -269,7 +269,7 @@ def create_argparser():
 
     version_group = parser.add_argument_group('version')
     parser.add_mutually_exclusive_group()._group_actions.extend([
-        version_group.add_argument("-v", "--version", nargs="+", default=DEFAULT_STAR_ARG, help="Specify the version to look for."),
+        version_group.add_argument("-v", "--version", nargs=1, default=DEFAULT_STAR_ARG, help="Specify the version to look for."),
         version_group.add_argument("--all_versions", action='store_true', help="Show all versions of each wheel."),
         version_group.add_argument("--all-versions", action='store_true', dest="all_versions"),
     ])
