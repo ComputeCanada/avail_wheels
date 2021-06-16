@@ -275,6 +275,7 @@ def create_argparser():
 
     parser.add_argument("wheel", nargs="*", default=DEFAULT_STAR_ARG, help="Specify the name to look for (case insensitive).")
     parser.add_argument("-n", "--name", nargs="+", default=None, help="Specify the name to look for (case insensitive).")
+    parser.add_argument("--all", action='store_true', help="Same as: --all_versions --all_pythons --all_archs")
 
     version_group = parser.add_argument_group('version')
     parser.add_mutually_exclusive_group()._group_actions.extend([
@@ -304,8 +305,6 @@ def create_argparser():
     display_group.add_argument("--condense", action='store_true', help="Condense wheel information into one line.")
     display_group.add_argument("--not-available", action='store_true', help="Also display wheels that were not available.")
 
-    parser.add_argument("--all", action='store_true', help="Same as: --all_versions --all_pythons --all_archs")
-
     return parser
 
 
@@ -322,9 +321,7 @@ def main():
     args.wheel = normalize_names(args.wheel)
 
     if args.all:
-        args.all_archs = True
-        args.all_pythons = True
-        args.all_versions = True
+        args.all_archs, args.all_versions, args.all_pythons = True, True, True
 
     # Specifying `all_arch` set `--arch` to None, hence returns all search paths from PIP_CONFIG_FILE
     search_paths = filter_search_paths(get_search_paths(), args.arch)
