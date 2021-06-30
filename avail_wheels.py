@@ -9,9 +9,10 @@ import operator
 import warnings
 import configparser
 from tabulate import tabulate
-from packaging import version
-from itertools import product
+from packaging import version, requirements, specifiers
 from runtime_env import RuntimeEnvironment
+from collections import defaultdict
+from itertools import chain
 
 __version__ = "1.2.0"
 
@@ -93,36 +94,41 @@ def match_file(file, rexes):
     return False
 
 
-def get_rexes(names_versions):
+def get_rexes(reqs):
     """
     Returns the patterns to match file names (case insensitive).
     Supports exact matching and globbing of name.
-    Supports exact matching and globbing of version.
-    pattern: name-version*.whl
+    pattern: name-*.whl
     """
-    return [re.compile(fnmatch.translate(f"{name}-{version}[-+]*.whl"), re.IGNORECASE) for name, version in names_versions]
+    return [re.compile(fnmatch.translate(f"{req}-*.whl"), re.IGNORECASE) for req in reqs]
 
 
-def get_wheels(paths, names_versions, pythons, latest=True):
+def get_wheels(paths, reqs, pythons, latest):
     """
     Glob the full list of wheels in the wheelhouse on CVMFS.
     Can also be filterd on arch, name, version or python.
     Return a dict of wheel name and list of tags.
     """
-    wheels = {}
-    rexes = get_rexes(names_versions)
+    wheels = defaultdict(list)
 
-    for path in paths:
-        arch = os.path.basename(path)
-        for _, _, files in os.walk(f"{path}"):
-            for file in files:
-                if match_file(file, rexes):
+    if reqs:
+        rexes = get_rexes(reqs)
+        for path in paths:
+            arch = os.path.basename(path)
+            for _, _, files in os.walk(f"{path}"):
+                for file in files:
+                    if match_file(file, rexes):
+                        wheel = Wheel(f"{arch}/{file}")
+                        if wheel.version in reqs[wheel.name].specifier and is_compatible(wheel, pythons):
+                            wheels[wheel.name].append(wheel)
+    else:
+        for path in paths:
+            arch = os.path.basename(path)
+            for _, _, files in os.walk(f"{path}"):
+                for file in files:
                     wheel = Wheel(f"{arch}/{file}")
                     if is_compatible(wheel, pythons):
-                        if wheel.name in wheels:
-                            wheels[wheel.name].append(wheel)
-                        else:
-                            wheels[wheel.name] = [wheel]
+                        wheels[wheel.name].append(wheel)
 
     # Filter versions
     return latest_versions(wheels) if latest else wheels
@@ -132,8 +138,6 @@ def latest_versions(wheels):
     """
     Returns only the latest version of each wheel.
     """
-
-    # use an ordereddict instead
     latests = {}
 
     for wheel_name, wheel_list in wheels.items():
@@ -195,22 +199,22 @@ def sort(wheels, columns, condense=False):
     return ret
 
 
-def add_not_available_wheels(wheels, wheel_names):
+def add_not_available_wheels(wheels, reqs):
     """ Add the wheels names given from the user that were not found. """
-    for wheel in wheel_names:
+    for wheel in reqs:
         # Do not duplicate and add names that translate to an already present name.
         if wheel not in wheels and all(not re.match(fnmatch.translate(wheel), w) for w in wheels.keys()):
-            wheels[wheel] = [Wheel(filename=wheel, name=wheel, parse=False)]
+            wheels[wheel].append(Wheel(filename=wheel, name=wheel, parse=False))
 
     return wheels
 
 
-def normalize_names(wheel_names):
+def normalize_name(name):
     """
     Normalize wheel names. Replaces `-` for `_`.
     Pip support names with dashes, but wheel convert them to underscores.
     """
-    return [name.replace('-', '_') for name in wheel_names]
+    return name.replace('-', '_')
 
 
 def filter_search_paths(search_paths, arch_values):
@@ -233,6 +237,63 @@ def get_search_paths():
     cfg = configparser.ConfigParser()
     cfg.read(env.pip_config_file)
     return cfg['wheel']['find-links'].split(' ')
+
+
+def get_requirements_set(args):
+    """
+    Get a unique set of requirements from the arguments.
+
+    Requirements comes from:
+        - positional `wheels`
+        - name
+        - requirements files
+
+    Returns
+    -------
+    dict
+        Requirements set
+    """
+    # Simulate a set, with associated requirement
+
+    reqs = defaultdict(requirements.Requirement)
+
+    # Add requirements from the command line.
+    for req in chain(args.wheel, args.name):
+        if args.specifier:
+            reqs[req.name] = requirements.Requirement(f"{req.name}{args.specifier}")
+        else:
+            reqs[req.name] = req
+
+    # And add requirements from requirements files.
+    if args.requirements:
+        # Include here, as importing is slow!
+        from pip._internal.req import req_file
+        for fname in args.requirements:
+            for freq in req_file.parse_requirements(fname, session=None):
+                r = requirements.Requirement(freq.requirement)
+                reqs[r.name] = r
+
+    return dict(reqs) if len(reqs) != 0 else None
+
+
+def make_eq_specifier(v):
+    """
+    """
+    try:
+        return specifiers.SpecifierSet(f"=={v}")
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"Invalid version: {v!r}.")
+
+
+def make_requirement(r):
+    """
+    """
+    try:
+        req = requirements.Requirement(r)
+        req.name = normalize_name(req.name)
+        return req
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"Invalid requirement: {r!r}.")
 
 
 def create_argparser():
@@ -262,14 +323,14 @@ def create_argparser():
                                      description=description,
                                      epilog=epilog)
 
-    parser.add_argument("wheel", nargs="*", default=DEFAULT_STAR_ARG, help="Specify the name to look for (case insensitive).")
-    parser.add_argument("-n", "--name", nargs="+", default=None, help="Specify the name to look for (case insensitive).")
+    parser.add_argument("wheel", nargs="*", type=make_requirement, help="Specify the name to look for (case insensitive).")
+    parser.add_argument("-n", "--name", nargs="+", type=make_requirement, default=[], help="Specify the name to look for (case insensitive).")
     parser.add_argument("--all", action='store_true', help="Same as: --all_versions --all_pythons --all_archs")
     parser.add_argument("-r", "--requirement", dest="requirements", nargs="+", default=[], metavar="file", help="Install from the given requirements file. This option can be used multiple times.")
 
     version_group = parser.add_argument_group('version')
     parser.add_mutually_exclusive_group()._group_actions.extend([
-        version_group.add_argument("-v", "--version", nargs=1, default=DEFAULT_STAR_ARG, help="Specify the version to look for."),
+        version_group.add_argument("-v", "--version", dest="specifier", metavar="version", type=make_eq_specifier, help="Specify the version to look for."),
         version_group.add_argument("--all_versions", action='store_true', help="Show all versions of each wheel."),
         version_group.add_argument("--all-versions", action='store_true', dest="all_versions"),
     ])
@@ -301,28 +362,20 @@ def create_argparser():
 def main():
     args = create_argparser().parse_args()
 
-    # Add name values to the positionnal wheel argument
-    if args.name and args.wheel == DEFAULT_STAR_ARG:
-        args.wheel = args.name
-    elif args.name:
-        args.wheel.extend(args.name)
-
-    # Pip support names with `-`, but wheel convert `-` to `_`.
-    args.wheel = normalize_names(args.wheel)
-
     if args.all:
         args.all_archs, args.all_versions, args.all_pythons = True, True, True
+
+    reqs = get_requirements_set(args)
 
     # Specifying `all_arch` set `--arch` to None, hence returns all search paths from PIP_CONFIG_FILE
     search_paths = filter_search_paths(get_search_paths(), args.arch)
     pythons = args.python if not args.all_pythons else env.available_pythons
-    names_versions = product(args.wheel, args.version)
-    latest = not args.all_versions and args.version == DEFAULT_STAR_ARG
+    latest = not args.all_versions and args.specifier is None
 
-    wheels = get_wheels(search_paths, names_versions=names_versions, pythons=pythons, latest=latest)
+    wheels = get_wheels(search_paths, reqs, pythons, latest)
 
     if args.not_available:
-        wheels = add_not_available_wheels(wheels, args.wheel)
+        wheels = add_not_available_wheels(wheels, reqs)
 
     # Handle SIGPIP emitted by piping to utils like head.
     # https://docs.python.org/3/library/signal.html#note-on-sigpipe
