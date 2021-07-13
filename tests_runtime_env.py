@@ -134,8 +134,8 @@ class Test_compatible_pythons(MonkeyTest):
         """
         self.assertIsInstance(self.env.compatible_pythons, dict)
         for av in self.env.available_pythons:
-            self.assertIsInstance(self.env.compatible_pythons[av], list)
-            self.assertEqual(self.env.compatible_pythons[av], ["py2.py3", f"py{av[0]}", f"cp{av.replace('.', '')}"])
+            self.assertIsInstance(self.env.compatible_pythons[av], frozenset)
+            self.assertEqual(self.env.compatible_pythons[av], frozenset(["py2.py3", f"py{av[0]}", f"cp{av.replace('.', '')}"]))
 
 
 if __name__ == '__main__':

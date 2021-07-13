@@ -163,7 +163,7 @@ class RuntimeEnvironment(object):
         if not self._compatible_pythons:
             # {'2.7': ['py2.py3', 'py2', 'cp27'], '3.5': ['py2.py3', 'py3', 'cp35'], ...}
             self._compatible_pythons = {
-                ap: ["py2.py3", f"py{ap[0]}", f"cp{ap[0]}{ap[2]}"]
+                ap: frozenset(["py2.py3", f"py{ap[0]}", f"cp{ap[0]}{ap[2]}"])
                 for ap in self.available_pythons
             }
 
