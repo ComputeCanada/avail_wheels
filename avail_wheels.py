@@ -314,8 +314,10 @@ def create_argparser():
     epilog += "    avail_wheels \"*cdf*\"\n"
     epilog += "    avail_wheels numpy --version \"1.15*\"\n"
     epilog += "    avail_wheels numpy --all_versions\n"
-    epilog += "    avail_wheels numpy torch_cpu --version \"1.15*\"\n"
+    epilog += "    avail_wheels 'numpy==1.15.*' torch_cpu\n"
     epilog += "    avail_wheels numpy --python 2.7 3.6\n"
+    epilog += "    avail_wheels -r requirements.txt\n"
+    epilog += "    avail_wheels 'dgl-cpu<0.6.0' -r requirements.txt\n"
     epilog += "\nFor more information, see: https://docs.computecanada.ca/wiki/Python#Listing_available_wheels"
 
     parser = argparse.ArgumentParser(prog="avail_wheels",
