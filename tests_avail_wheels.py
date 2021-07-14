@@ -12,7 +12,8 @@ from pytest import MonkeyPatch
 import shutil
 from runtime_env import RuntimeEnvironment
 from collections import defaultdict
-from packaging import requirements, specifiers
+from packaging import specifiers
+import wild_requirements as requirements
 
 
 TEST_STACKS = ["generic", "nix", "gentoo"]
@@ -324,7 +325,7 @@ class Test_get_wheels_method(unittest.TestCase):
         other = {'netCDF4': [avail_wheels.Wheel(f"{arch}/{self.raw_filenames['netCDF4'][2]}"),
                              avail_wheels.Wheel(f"{arch}/{self.raw_filenames['netCDF4'][3]}")]}
 
-        ret = avail_wheels.get_wheels(paths=search_paths, pythons=pythons, reqs=defaultdict(list, {exactname: [requirements.Requirement(exactname)]}), latest=False)
+        ret = avail_wheels.get_wheels(paths=search_paths, pythons=pythons, reqs=defaultdict(requirements.Requirement, {exactname: requirements.Requirement(exactname)}), latest=False)
         self.assertEqual(ret, other)
 
     @unittest.skip("Need to refactor")
@@ -336,7 +337,7 @@ class Test_get_wheels_method(unittest.TestCase):
         other = {'netCDF4': [avail_wheels.Wheel(f"{arch}/{self.raw_filenames['netCDF4'][2]}"),
                              avail_wheels.Wheel(f"{arch}/{self.raw_filenames['netCDF4'][3]}")]}
 
-        ret = avail_wheels.get_wheels(paths=search_paths, pythons=pythons, reqs=defaultdict(list, {wildname: [wildname]}), latest=False)
+        ret = avail_wheels.get_wheels(paths=search_paths, pythons=pythons, reqs=defaultdict(requirements.Requirement, {wildname: requirements.Requirement(wildname)}), latest=False)
         self.assertEqual(ret, other)
 
     @unittest.skip("Need to refactor")
@@ -348,7 +349,7 @@ class Test_get_wheels_method(unittest.TestCase):
         # version = '1.3.1'
         other = {'netCDF4': [avail_wheels.Wheel(f"{arch}/{self.raw_filenames['netCDF4'][3]}")]}
 
-        ret = avail_wheels.get_wheels(paths=search_paths, pythons=pythons, reqs=defaultdict(list, {wildname: [wildname]}), latest=False)
+        ret = avail_wheels.get_wheels(paths=search_paths, pythons=pythons, reqs=defaultdict(requirements.Requirement, {wildname: requirements.Requirement(wildname)}), latest=False)
         self.assertEqual(ret, other)
 
     @unittest.skip("Need to refactor")
@@ -360,7 +361,7 @@ class Test_get_wheels_method(unittest.TestCase):
         # version = '1.2.*'
         other = {'netCDF4': [avail_wheels.Wheel(f"{arch}/{self.raw_filenames['netCDF4'][2]}")]}
 
-        ret = avail_wheels.get_wheels(paths=search_paths, pythons=pythons, reqs=defaultdict(list, {wildname: [wildname]}), latest=False)
+        ret = avail_wheels.get_wheels(paths=search_paths, pythons=pythons, reqs=defaultdict(requirements.Requirement, {wildname: requirements.Requirement(wildname)}), latest=False)
         self.assertEqual(ret, other)
 
     def test_get_wheels_wrongversion_wildname_arch_python(self):
@@ -368,10 +369,10 @@ class Test_get_wheels_method(unittest.TestCase):
         search_paths = [f"{self.wheelhouse}/{self.current_stack}/{arch}"]
         pythons = ['3.6']
         wildname = "*CDF*"
-        # version = '2.3'
+        version = '2.3'
         other = {}
 
-        ret = avail_wheels.get_wheels(paths=search_paths, pythons=pythons, reqs=defaultdict(list, {wildname: [wildname]}), latest=False)
+        ret = avail_wheels.get_wheels(paths=search_paths, pythons=pythons, reqs=defaultdict(requirements.Requirement, {wildname: requirements.Requirement(f"{wildname}=={version}")}), latest=False)
         self.assertEqual(ret, other)
 
 

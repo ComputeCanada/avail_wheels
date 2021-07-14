@@ -9,7 +9,8 @@ import operator
 import warnings
 import configparser
 from tabulate import tabulate
-from packaging import version, requirements, specifiers
+from packaging import version, specifiers
+import wild_requirements as requirements
 from runtime_env import RuntimeEnvironment
 from collections import defaultdict
 from itertools import chain
@@ -94,6 +95,17 @@ def match_file(file, rexes):
     return False
 
 
+def match_version(wheel, reqs):
+    """
+    Match an exact requirements or a wild requirements.
+    When a requirements has no specifiers, it automatically match.
+    """
+    if wheel.name in reqs:
+        return wheel.version in reqs[wheel.name].specifier
+    else:
+        return any(re.match(fnmatch.translate(req_name), wheel.name, re.IGNORECASE) and wheel.version in req.specifier for req_name, req in reqs.items())
+
+
 def get_rexes(reqs):
     """
     Returns the patterns to match file names (case insensitive).
@@ -119,7 +131,7 @@ def get_wheels(paths, reqs, pythons, latest):
                 for file in files:
                     if match_file(file, rexes):
                         wheel = Wheel(f"{arch}/{file}")
-                        if wheel.version in reqs[wheel.name].specifier and is_compatible(wheel, pythons):
+                        if match_version(wheel, reqs) and is_compatible(wheel, pythons):
                             wheels[wheel.name].append(wheel)
     else:
         for path in paths:
