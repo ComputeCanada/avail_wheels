@@ -3,6 +3,7 @@
 import os
 from glob import glob
 import platform
+import re
 
 
 class RuntimeEnvironment(object):
@@ -87,7 +88,9 @@ class RuntimeEnvironment(object):
         """
         Returns the python directories path defined by the PYTHON_DIRS environment variable.
 
-        Default: /cvmfs/soft.computecanada.ca/easybuild/software/20*/Core/python
+        Multiple paths must be separated by `:`.
+
+        Default: /cvmfs/soft.computecanada.ca/easybuild/software/20*/Core/python:/cvmfs/soft.computecanada.ca/easybuild/software/20*/*/Core/python
 
         Returns
         -------
@@ -97,7 +100,10 @@ class RuntimeEnvironment(object):
         if not self._python_dirs:
             self._python_dirs = os.environ.get(
                 "PYTHON_DIRS",
-                "/cvmfs/soft.computecanada.ca/easybuild/software/20*/Core/python",
+                ":".join([
+                    "/cvmfs/soft.computecanada.ca/easybuild/software/20*/Core/python",
+                    "/cvmfs/soft.computecanada.ca/easybuild/software/20*/*/Core/python",
+                ])
             )
 
         return self._python_dirs
@@ -141,10 +147,12 @@ class RuntimeEnvironment(object):
         """
         if not self._available_pythons:
             versions = set()
-            for python_directory in glob(self.python_directories):
-                for python_version in os.listdir(python_directory):
-                    # Slice `3.8.0` to `3.8` (major.minor)
-                    versions.add(python_version[:3])
+            for path in self.python_directories.split(':'):
+                for python_directory in glob(path):
+                    for python_version in os.listdir(python_directory):
+                        if re.match(r"\d+.\d+(.\d+)?", python_version):
+                            # Slice `3.8.0` to `3.8` (major.minor)
+                            versions.add(python_version[:3])
             self._available_pythons = sorted(versions)
 
         return self._available_pythons

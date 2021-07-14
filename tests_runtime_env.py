@@ -78,10 +78,17 @@ class Test_current_python(MonkeyTest):
 class Test_python_dirs(MonkeyTest):
     def test_python_dirs_default(self):
         """
-        Test that the default python directories is from /cvmfs/soft.computecanada.ca/easybuild/software/20*/Core/python
+        Test that the default python directories is from
+            /cvmfs/soft.computecanada.ca/easybuild/software/20*/Core/python:/cvmfs/soft.computecanada.ca/easybuild/software/20*/*/Core/python
         """
         self.monkeypatch.delenv("PYTHON_DIRS", raising=False)
-        self.assertEqual(self.env.python_directories, "/cvmfs/soft.computecanada.ca/easybuild/software/20*/Core/python")
+        self.assertEqual(
+            self.env.python_directories,
+            ":".join([
+                "/cvmfs/soft.computecanada.ca/easybuild/software/20*/Core/python",
+                "/cvmfs/soft.computecanada.ca/easybuild/software/20*/*/Core/python",
+            ])
+        )
 
     def test_python_dirs_variable(self):
         """
@@ -124,7 +131,7 @@ class Test_available_pythons(MonkeyTest):
         """
         # TODO : Add test helper to construct python directories to test
         self.monkeypatch.delenv("PYTHON_DIRS", raising=False)
-        self.assertEqual(self.env.available_pythons, ["2.7", "3.5", "3.6", "3.7", "3.8"])
+        self.assertEqual(self.env.available_pythons, ["2.7", "3.5", "3.6", "3.7", "3.8", "3.9"])
 
 
 class Test_compatible_pythons(MonkeyTest):
