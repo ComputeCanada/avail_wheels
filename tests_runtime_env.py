@@ -1,6 +1,11 @@
 import sys
 from runtime_env import RuntimeEnvironment
 from packaging import tags
+import os
+import pytest
+
+
+venv = pytest.mark.skipif(os.environ.get('VIRTUAL_ENV') is None, reason="No virtual env are activated.")
 
 
 def test_wheelhouse_default(monkeypatch):
@@ -56,6 +61,7 @@ def test_current_python_variable_module(monkeypatch):
     assert RuntimeEnvironment().current_python == v
 
 
+@venv
 def test_current_python_variable_venv(monkeypatch):
     """
     Test that the current python version is read from VIRTUAL_ENV enviroment variable.
