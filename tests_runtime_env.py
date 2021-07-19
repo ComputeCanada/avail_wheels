@@ -2,6 +2,7 @@ import unittest
 import sys
 from runtime_env import RuntimeEnvironment
 from pytest import MonkeyPatch
+from packaging import tags
 
 
 class MonkeyTest(unittest.TestCase):
@@ -134,15 +135,26 @@ class Test_available_pythons(MonkeyTest):
         self.assertEqual(self.env.available_pythons, ["2.7", "3.5", "3.6", "3.7", "3.8", "3.9"])
 
 
-class Test_compatible_pythons(MonkeyTest):
-    def test_compatible_pythons(self):
+class Test_compatible_tags(MonkeyTest):
+    def test_compatible_tags(self):
         """
         Test that the default compatible pythons versions are from CVMFS.
         """
-        self.assertIsInstance(self.env.compatible_pythons, dict)
-        for av in self.env.available_pythons:
-            self.assertIsInstance(self.env.compatible_pythons[av], frozenset)
-            self.assertEqual(self.env.compatible_pythons[av], frozenset(["py2.py3", f"py{av[0]}", f"cp{av.replace('.', '')}"]))
+        av = '3.8'
+        platform = list(tags._generic_platforms())[0]
+        other = frozenset([
+            tags.Tag("cp38", "cp38", platform),
+            tags.Tag("cp38", "abi3", platform),
+            tags.Tag("cp38", "none", platform),
+            tags.Tag("py38", "none", platform),
+            tags.Tag("py3", "none", platform),
+            tags.Tag("py38", "none", "any"),
+            tags.Tag("py3", "none", "any"),
+        ])
+
+        self.assertIsInstance(self.env.compatible_tags, dict)
+        self.assertIsInstance(self.env.compatible_tags[av], frozenset)
+        self.assertEqual(self.env.compatible_tags[av], other)
 
 
 if __name__ == '__main__':

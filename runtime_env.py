@@ -4,6 +4,7 @@ import os
 from glob import glob
 import platform
 import re
+from packaging import tags
 
 
 class RuntimeEnvironment(object):
@@ -24,7 +25,7 @@ class RuntimeEnvironment(object):
     _current_architecture = None
     _available_architectures = frozenset(["avx", "avx2", "avx512", "generic", "sse3"])
     _available_pythons = None
-    _compatible_pythons = None
+    _compatible_tags = None
 
     @property
     def wheelhouse(self):
@@ -158,21 +159,48 @@ class RuntimeEnvironment(object):
         return self._available_pythons
 
     @property
-    def compatible_pythons(self):
+    def compatible_tags(self):
         """
-        Returns compatible pythons tags available.
+        Returns compatible tags (interpreter-abi-platform) available.
         This includes universal (py2.py3, py3) and cpython tags.
+
+        The tags returned are filtered for the available python instead of
+        using a python range to generate the tags.
+
+        For example, on a Linux system, for python 3.9:
+        ```
+            '3.9': frozenset([
+                "cp39-cp39-linux_x86_64"
+                "cp39-abi3-linux_x86_64",
+                "cp39-none-linux_x86_64",
+                "py3-none-linux_x86_64",
+                "py39-none-linux_x86_64",
+                "py3-none-any",
+                "py39-none-any",
+            ])
+        ```
 
         Returns
         -------
-        list
-            Compatible python tags
+        dict
+            Compatible tags per available python version
         """
-        if not self._compatible_pythons:
-            # {'2.7': ['py2.py3', 'py2', 'cp27'], '3.5': ['py2.py3', 'py3', 'cp35'], ...}
-            self._compatible_pythons = {
-                ap: frozenset(["py2.py3", f"py{ap[0]}", f"cp{ap[0]}{ap[2]}"])
+        if not self._compatible_tags:
+            self._compatible_tags = {
+                ap: frozenset(
+                    filter(
+                        lambda x: x.interpreter in (f"py{ap[0]}", f"py{ap[0]}{ap[2]}", f"cp{ap[0]}{ap[2]}"),
+                        [
+                            *tags.compatible_tags(
+                                python_version=(int(ap[0]), int(ap[2])), platforms=tags._generic_platforms()
+                            ),
+                            *tags.cpython_tags(
+                                python_version=(int(ap[0]), int(ap[2])), platforms=tags._generic_platforms()
+                            ),
+                        ],
+                    )
+                )
                 for ap in self.available_pythons
             }
 
-        return self._compatible_pythons
+        return self._compatible_tags

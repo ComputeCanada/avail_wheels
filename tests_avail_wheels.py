@@ -12,7 +12,7 @@ from pytest import MonkeyPatch
 import shutil
 from runtime_env import RuntimeEnvironment
 from collections import defaultdict
-from packaging import specifiers
+import packaging
 import wild_requirements as requirements
 
 
@@ -95,35 +95,39 @@ class DummyPipConfigFile(object):
 
 
 class Test_wheel_class(unittest.TestCase):
-    def test_ctor_noparse(self):
-        wheel = avail_wheels.Wheel("file", parse=False)
-        self.assertEqual(wheel.filename, "file")
-
     def test_ctor_kwargs(self):
-        wheel = avail_wheels.Wheel(filename="file", parse=False, arch='avx',
-                                   name='torch_cpu', version='1.2.0', build="computecanada",
-                                   python="cp36", abi="cp36m", platform="linux_x86_64")
+        tags = packaging.tags.parse_tag("cp36-cp36m-linux_x86_64")
+        wheel = avail_wheels.Wheel(filename="file", arch='avx',
+                                   name='torch_cpu', version='1.2.0+computecanada', build="",
+                                   tags=tags)
         self.assertEqual(wheel.filename, "file")
         self.assertEqual(wheel.arch, "avx")
         self.assertEqual(wheel.name, "torch_cpu")
-        self.assertEqual(wheel.version, "1.2.0")
-        self.assertEqual(wheel.build, "computecanada")
+        self.assertEqual(wheel.version, "1.2.0+computecanada")
+        self.assertEqual(wheel.build, "")
+        self.assertEqual(wheel.tags, tags)
         self.assertEqual(wheel.python, "cp36")
         self.assertEqual(wheel.abi, "cp36m")
         self.assertEqual(wheel.platform, "linux_x86_64")
 
     def test_parse_tags(self):
-        filenames = ["avx2/netCDF4-1.3.1-cp36-cp36m-linux_x86_64.whl",
-                     "avx/tensorflow_cpu-1.6.0+computecanada-cp36-cp36m-linux_x86_64.whl",
-                     "generic/backports.functools_lru_cache-1.4-py2.py3-none-any.whl",
-                     "sse3/Shapely-1.6.2.post1-cp35-cp35m-linux_x86_64.whl"]
-        tags = {filenames[0]: {'arch': 'avx2', 'name': 'netCDF4', 'version': '1.3.1', 'build': '', 'python': 'cp36', 'abi': 'cp36m', 'platform': 'linux_x86_64'},
-                filenames[1]: {'arch': 'avx', 'name': 'tensorflow_cpu', 'version': '1.6.0', 'build': "computecanada", 'python': 'cp36', 'abi': 'cp36m', 'platform': 'linux_x86_64'},
-                filenames[2]: {'arch': 'generic', 'name': 'backports.functools_lru_cache', 'version': '1.4', 'build': '', 'python': 'py2.py3', 'abi': 'none', 'platform': "any"},
-                filenames[3]: {'arch': 'sse3', 'name': 'Shapely', 'version': '1.6.2.post1', 'build': '', 'python': 'cp35', 'abi': 'cp35m', 'platform': "linux_x86_64"}}
+        filenames = [
+            ("avx2", "netCDF4-1.3.1-cp36-cp36m-linux_x86_64.whl"),
+            ("avx", "tensorflow_cpu-1.6.0+computecanada-cp36-cp36m-linux_x86_64.whl"),
+            ("generic", "backports.functools_lru_cache-1.4-py2.py3-none-any.whl"),
+            ("sse3", "Shapely-1.6.2.post1-cp35-cp35m-linux_x86_64.whl"),
+            ("generic", "shiboken2-5.15.0-5.15.0-cp35.cp36.cp37.cp38-abi3-linux_x86_64.whl"),
+        ]
+        tags = {
+            filenames[0][1]: {'arch': 'avx2', 'name': 'netCDF4', 'version': '1.3.1', 'build': '', 'python': 'cp36', 'abi': 'cp36m', 'platform': 'linux_x86_64'},
+            filenames[1][1]: {'arch': 'avx', 'name': 'tensorflow_cpu', 'version': '1.6.0+computecanada', 'build': "", 'python': 'cp36', 'abi': 'cp36m', 'platform': 'linux_x86_64'},
+            filenames[2][1]: {'arch': 'generic', 'name': 'backports.functools_lru_cache', 'version': '1.4', 'build': '', 'python': 'py2,py3', 'abi': 'none', 'platform': "any"},
+            filenames[3][1]: {'arch': 'sse3', 'name': 'Shapely', 'version': '1.6.2.post1', 'build': '', 'python': 'cp35', 'abi': 'cp35m', 'platform': "linux_x86_64"},
+            filenames[4][1]: {'arch': 'generic', 'name': 'shiboken2', 'version': '5.15.0', 'build': '5.15.0', 'python': 'cp35,cp36,cp37,cp38', 'abi': 'abi3', 'platform': "linux_x86_64"},
+        }
 
-        for file in filenames:
-            wheel = avail_wheels.Wheel(file)
+        for arch, file in filenames:
+            wheel = avail_wheels.Wheel.parse_wheel_filename(filename=file, arch=arch)
             self.assertEqual(wheel.filename, file)
             self.assertEqual(wheel.arch, tags[file]['arch'])
             self.assertEqual(wheel.name, tags[file]['name'])
@@ -133,53 +137,33 @@ class Test_wheel_class(unittest.TestCase):
             self.assertEqual(wheel.abi, tags[file]['abi'])
             self.assertEqual(wheel.platform, tags[file]['platform'])
 
-    def test_parse_tags_malformed_bad_sep(self):
-        filename = "avx2/netCDF4-1.3.1.cp36-cp36m-linux_x86_64.whl"
-        self.assertWarnsRegex(UserWarning, f"Could not get tags for : {filename}", avail_wheels.Wheel, filename=filename, parse=True)
+    def test_loose_version(self):
+        """ Test that the string repr of version is a parsed version. """
+        wheel = avail_wheels.Wheel(version='1.2+cc')
+        loose_version = wheel.loose_version()
 
-    def test_parse_tags_malformed_missing_sep(self):
-        filename = "avx2/netCDF4-1.3.1-cp36cp36m-linux_x86_64.whl"
-        self.assertWarnsRegex(UserWarning, f"Could not get tags for : {filename}", avail_wheels.Wheel, filename=filename, parse=True)
-
-    def test_parse_tags_malformed_missing_name(self):
-        filename = "avx2/1.3.1-cp36-cp36m-linux_x86_64.whl"
-        self.assertWarnsRegex(UserWarning, f"Could not get tags for : {filename}", avail_wheels.Wheel, filename=filename, parse=True)
-
-    def test_wheel_print(self):
-        wheel = str(avail_wheels.Wheel("file", parse=False))
-        self.assertEqual(wheel, "file")
-
-    def test_wheel_eq(self):
-        a, b = avail_wheels.Wheel("avx2/torch_cpu-0.4.0-cp36-cp36m-linux_x86_64.whl"), avail_wheels.Wheel("avx2/torch_cpu-0.4.0-cp36-cp36m-linux_x86_64.whl")
-        self.assertEqual(a, b)
-
-    def test_wheel_noteq_attr(self):
-        a, b = avail_wheels.Wheel("avx2/torch_cpu-0.4.0-cp36-cp36m-linux_x86_64.whl"), avail_wheels.Wheel("avx/torch_cpu-0.4.0-cp36-cp36m-linux_x86_64.whl")
-        self.assertNotEqual(a, b)
-
-    def test_wheel_noteq_instance(self):
-        a, b = avail_wheels.Wheel("avx2/torch_cpu-0.4.0-cp36-cp36m-linux_x86_64.whl"), "avx2/torch_cpu-0.4.0-cp36-cp36m-linux_x86_64.whl"
-        self.assertNotEqual(a, b)
+        self.assertIsInstance(loose_version, packaging.version.Version)
+        self.assertEqual(loose_version, packaging.version.Version('1.2+cc'))
 
 
 class Test_latest_versions_method(unittest.TestCase):
     def setUp(self):
-        self.wheels = {'netCDF4': [avail_wheels.Wheel("avx2/netCDF4-1.3.2-cp36-cp36m-linux_x86_64.whl"),
-                                   avail_wheels.Wheel("avx2/netCDF4-1.3.2-cp35-cp35m-linux_x86_64.whl"),
-                                   avail_wheels.Wheel("avx2/netCDF4-1.3.2-cp27-cp27mu-linux_x86_64.whl"),
-                                   avail_wheels.Wheel("avx2/netCDF4-1.3.1-cp36-cp36m-linux_x86_64.whl"),
-                                   avail_wheels.Wheel("avx2/netCDF4-1.3.1-cp36-cp36m-linux_x86_64.whl"),
-                                   avail_wheels.Wheel("avx2/netCDF4-1.3.1-cp36-cp36m-linux_x86_64.whl"),
-                                   avail_wheels.Wheel("avx2/netCDF4-1.2.0-cp36-cp36m-linux_x86_64.whl"),
-                                   avail_wheels.Wheel("avx2/netCDF4-1.3-cp36-cp36m-linux_x86_64.whl")],
-                       'torch_cpu': [avail_wheels.Wheel("avx2/torch_cpu-0.4.0-cp36-cp36m-linux_x86_64.whl")]}
+        self.wheels = {'netCDF4': [avail_wheels.Wheel.parse_wheel_filename(arch="avx2", filename="netCDF4-1.3.2-cp36-cp36m-linux_x86_64.whl"),
+                                   avail_wheels.Wheel.parse_wheel_filename(arch="avx2", filename="netCDF4-1.3.2-cp35-cp35m-linux_x86_64.whl"),
+                                   avail_wheels.Wheel.parse_wheel_filename(arch="avx2", filename="netCDF4-1.3.2-cp27-cp27mu-linux_x86_64.whl"),
+                                   avail_wheels.Wheel.parse_wheel_filename(arch="avx2", filename="netCDF4-1.3.1-cp36-cp36m-linux_x86_64.whl"),
+                                   avail_wheels.Wheel.parse_wheel_filename(arch="avx2", filename="netCDF4-1.3.1-cp36-cp36m-linux_x86_64.whl"),
+                                   avail_wheels.Wheel.parse_wheel_filename(arch="avx2", filename="netCDF4-1.3.1-cp36-cp36m-linux_x86_64.whl"),
+                                   avail_wheels.Wheel.parse_wheel_filename(arch="avx2", filename="netCDF4-1.2.0-cp36-cp36m-linux_x86_64.whl"),
+                                   avail_wheels.Wheel.parse_wheel_filename(arch="avx2", filename="netCDF4-1.3-cp36-cp36m-linux_x86_64.whl")],
+                       'torch_cpu': [avail_wheels.Wheel.parse_wheel_filename(arch="avx2", filename="torch_cpu-0.4.0-cp36-cp36m-linux_x86_64.whl")]}
 
         self.wheels['netCDF4'].reverse()
 
-        self.latest_wheels = {'netCDF4': [avail_wheels.Wheel("avx2/netCDF4-1.3.2-cp27-cp27mu-linux_x86_64.whl"),
-                                          avail_wheels.Wheel("avx2/netCDF4-1.3.2-cp35-cp35m-linux_x86_64.whl"),
-                                          avail_wheels.Wheel("avx2/netCDF4-1.3.2-cp36-cp36m-linux_x86_64.whl")],
-                              'torch_cpu': [avail_wheels.Wheel("avx2/torch_cpu-0.4.0-cp36-cp36m-linux_x86_64.whl")]}
+        self.latest_wheels = {'netCDF4': [avail_wheels.Wheel.parse_wheel_filename(arch="avx2", filename="netCDF4-1.3.2-cp27-cp27mu-linux_x86_64.whl"),
+                                          avail_wheels.Wheel.parse_wheel_filename(arch="avx2", filename="netCDF4-1.3.2-cp35-cp35m-linux_x86_64.whl"),
+                                          avail_wheels.Wheel.parse_wheel_filename(arch="avx2", filename="netCDF4-1.3.2-cp36-cp36m-linux_x86_64.whl")],
+                              'torch_cpu': [avail_wheels.Wheel.parse_wheel_filename(arch="avx2", filename="torch_cpu-0.4.0-cp36-cp36m-linux_x86_64.whl")]}
 
     def test_latest_versions_method_all_pythons(self):
         ret = avail_wheels.latest_versions(self.wheels)
@@ -188,36 +172,36 @@ class Test_latest_versions_method(unittest.TestCase):
 
 class Test_sort_method(unittest.TestCase):
     def setUp(self):
-        self.wheels = {'netCDF4': [avail_wheels.Wheel("avx/netCDF4-1.3.1-cp27-cp27mu-linux_x86_64.whl"),
-                                   avail_wheels.Wheel("avx/netCDF4-1.3.1-cp35-cp35m-linux_x86_64.whl"),
-                                   avail_wheels.Wheel("avx/netCDF4-1.3.1-cp36-cp36m-linux_x86_64.whl"),
-                                   avail_wheels.Wheel("avx2/netCDF4-1.3.1-cp27-cp27mu-linux_x86_64.whl"),
-                                   avail_wheels.Wheel("avx2/netCDF4-1.3.1-cp35-cp35m-linux_x86_64.whl"),
-                                   avail_wheels.Wheel("avx2/netCDF4-1.3.1-cp36-cp36m-linux_x86_64.whl"),
-                                   avail_wheels.Wheel("sse3/netCDF4-1.3.1-cp27-cp27mu-linux_x86_64.whl"),
-                                   avail_wheels.Wheel("sse3/netCDF4-1.3.1-cp35-cp35m-linux_x86_64.whl"),
-                                   avail_wheels.Wheel("sse3/netCDF4-1.3.1-cp36-cp36m-linux_x86_64.whl"),
-                                   avail_wheels.Wheel("generic/netCDF4-1.4.0-cp27-cp27mu-linux_x86_64.whl"),
-                                   avail_wheels.Wheel("generic/netCDF4-1.2.8-cp27-cp27mu-linux_x86_64.whl")],
+        self.wheels = {'netCDF4': [avail_wheels.Wheel.parse_wheel_filename(arch="avx", filename="netCDF4-1.3.1-cp27-cp27mu-linux_x86_64.whl"),
+                                   avail_wheels.Wheel.parse_wheel_filename(arch="avx", filename="netCDF4-1.3.1-cp35-cp35m-linux_x86_64.whl"),
+                                   avail_wheels.Wheel.parse_wheel_filename(arch="avx", filename="netCDF4-1.3.1-cp36-cp36m-linux_x86_64.whl"),
+                                   avail_wheels.Wheel.parse_wheel_filename(arch="avx2", filename="netCDF4-1.3.1-cp27-cp27mu-linux_x86_64.whl"),
+                                   avail_wheels.Wheel.parse_wheel_filename(arch="avx2", filename="netCDF4-1.3.1-cp35-cp35m-linux_x86_64.whl"),
+                                   avail_wheels.Wheel.parse_wheel_filename(arch="avx2", filename="netCDF4-1.3.1-cp36-cp36m-linux_x86_64.whl"),
+                                   avail_wheels.Wheel.parse_wheel_filename(arch="sse3", filename="netCDF4-1.3.1-cp27-cp27mu-linux_x86_64.whl"),
+                                   avail_wheels.Wheel.parse_wheel_filename(arch="sse3", filename="netCDF4-1.3.1-cp35-cp35m-linux_x86_64.whl"),
+                                   avail_wheels.Wheel.parse_wheel_filename(arch="sse3", filename="netCDF4-1.3.1-cp36-cp36m-linux_x86_64.whl"),
+                                   avail_wheels.Wheel.parse_wheel_filename(arch="generic", filename="netCDF4-1.4.0-cp27-cp27mu-linux_x86_64.whl"),
+                                   avail_wheels.Wheel.parse_wheel_filename(arch="generic", filename="netCDF4-1.2.8-cp27-cp27mu-linux_x86_64.whl")],
 
-                       "botocore": [avail_wheels.Wheel("generic/botocore-1.10.63-py2.py3-none-any.whl"),
-                                    avail_wheels.Wheel("generic/botocore-1.9.5-py2.py3-none-any.whl"),
-                                    avail_wheels.Wheel("generic/botocore-1.10.57-py2.py3-none-any.whl"),
-                                    avail_wheels.Wheel("generic/botocore-1.9.11-py2.py3-none-any.whl")],
+                       "botocore": [avail_wheels.Wheel.parse_wheel_filename(arch="generic", filename="botocore-1.10.63-py2.py3-none-any.whl"),
+                                    avail_wheels.Wheel.parse_wheel_filename(arch="generic", filename="botocore-1.9.5-py2.py3-none-any.whl"),
+                                    avail_wheels.Wheel.parse_wheel_filename(arch="generic", filename="botocore-1.10.57-py2.py3-none-any.whl"),
+                                    avail_wheels.Wheel.parse_wheel_filename(arch="generic", filename="botocore-1.9.11-py2.py3-none-any.whl")],
 
-                       "pydicom": [avail_wheels.Wheel("generic/pydicom-1.1.0-1-py2.py3-none-any.whl"),
-                                   avail_wheels.Wheel("generic/pydicom-0.9.9-py3-none-any.whl")],
+                       "pydicom": [avail_wheels.Wheel.parse_wheel_filename(arch="generic", filename="pydicom-1.1.0-1-py2.py3-none-any.whl"),
+                                   avail_wheels.Wheel.parse_wheel_filename(arch="generic", filename="pydicom-0.9.9-py3-none-any.whl")],
 
 
-                       "torch_cpu": [avail_wheels.Wheel("avx2/torch_cpu-0.4.0-cp36-cp36m-linux_x86_64.whl"),
-                                     avail_wheels.Wheel("avx2/torch_cpu-0.2.0+d8f3c60-cp27-cp27mu-linux_x86_64.whl")]}
+                       "torch_cpu": [avail_wheels.Wheel.parse_wheel_filename(arch="avx2", filename="torch_cpu-0.4.0-cp36-cp36m-linux_x86_64.whl"),
+                                     avail_wheels.Wheel.parse_wheel_filename(arch="avx2", filename="torch_cpu-0.2.0+d8f3c60-cp27-cp27mu-linux_x86_64.whl")]}
 
         self.wheels['netCDF4'].reverse()
 
-        self.output = [['botocore', '1.10.63', '', 'py2.py3', 'generic'],
-                       ['botocore', '1.10.57', '', 'py2.py3', 'generic'],
-                       ['botocore', '1.9.11', '', 'py2.py3', 'generic'],
-                       ['botocore', '1.9.5', '', 'py2.py3', 'generic'],
+        self.output = [['botocore', '1.10.63', '', 'py2,py3', 'generic'],
+                       ['botocore', '1.10.57', '', 'py2,py3', 'generic'],
+                       ['botocore', '1.9.11', '', 'py2,py3', 'generic'],
+                       ['botocore', '1.9.5', '', 'py2,py3', 'generic'],
                        ['netCDF4', '1.4.0', '', 'cp27', 'generic'],
                        ['netCDF4', '1.3.1', '', 'cp36', 'sse3'],
                        ['netCDF4', '1.3.1', '', 'cp35', 'sse3'],
@@ -229,16 +213,16 @@ class Test_sort_method(unittest.TestCase):
                        ['netCDF4', '1.3.1', '', 'cp35', 'avx'],
                        ['netCDF4', '1.3.1', '', 'cp27', 'avx'],
                        ['netCDF4', '1.2.8', '', 'cp27', 'generic'],
-                       ["pydicom", "1.1.0", "1", "py2.py3", "generic"],
+                       ["pydicom", "1.1.0", "1", "py2,py3", "generic"],
                        ["pydicom", "0.9.9", "", "py3", "generic"],
                        ["torch_cpu", "0.4.0", "", "cp36", "avx2"],
-                       ["torch_cpu", "0.2.0", "d8f3c60", "cp27", "avx2"]]
+                       ["torch_cpu", "0.2.0+d8f3c60", "", "cp27", "avx2"]]
 
         self.condensed_output = [
-            ["botocore", "1.10.63, 1.10.57, 1.9.11, 1.9.5", '', "py2.py3", "generic"],
+            ["botocore", "1.10.63, 1.10.57, 1.9.11, 1.9.5", '', "py2,py3", "generic"],
             ["netCDF4", "1.4.0, 1.3.1, 1.2.8", '', "cp36, cp35, cp27", "sse3, generic, avx2, avx"],
-            ["pydicom", "1.1.0, 0.9.9", "1, ", "py3, py2.py3", "generic"],
-            ["torch_cpu", "0.4.0, 0.2.0", ", d8f3c60", "cp36, cp27", "avx2"]
+            ["pydicom", "1.1.0, 0.9.9", "1, ", "py3, py2,py3", "generic"],
+            ["torch_cpu", "0.4.0, 0.2.0+d8f3c60", "", "cp36, cp27", "avx2"]
         ]
 
     def test_sort_ret(self):
@@ -289,7 +273,7 @@ class Test_get_wheels_method(unittest.TestCase):
         for arch in avail_wheels.env.available_architectures:
             for wheel_name, files in self.raw_filenames.items():
                 for file in files:
-                    other[wheel_name].append(avail_wheels.Wheel(f"{arch}/{file}"))
+                    other[wheel_name].append(avail_wheels.Wheel.parse_wheel_filename(arch=arch, filename=file))
 
         ret = avail_wheels.get_wheels(paths=search_paths, pythons=avail_wheels.env.available_pythons, reqs=None, latest=False)
         self.assertEqual(ret, other)
@@ -300,7 +284,7 @@ class Test_get_wheels_method(unittest.TestCase):
         other = {'netCDF4': [], 'torch_cpu': []}
         for wheel_name, files in self.raw_filenames.items():
             for file in files:
-                other[wheel_name].append(avail_wheels.Wheel(f"{arch}/{file}"))
+                other[wheel_name].append(avail_wheels.Wheel.parse_wheel_filename(arch=arch, filename=file))
 
         ret = avail_wheels.get_wheels(paths=search_paths, pythons=avail_wheels.env.available_pythons, reqs=None, latest=False)
         self.assertEqual(ret, other)
@@ -309,9 +293,9 @@ class Test_get_wheels_method(unittest.TestCase):
         arch = 'avx2'
         search_paths = [f"{self.wheelhouse}/{self.current_stack}/{arch}"]
         pythons = ['3.6']
-        other = {'netCDF4': [avail_wheels.Wheel(f"{arch}/{self.raw_filenames['netCDF4'][2]}"),
-                             avail_wheels.Wheel(f"{arch}/{self.raw_filenames['netCDF4'][3]}")],
-                 'torch_cpu': [avail_wheels.Wheel(f"{arch}/{self.raw_filenames['torch_cpu'][0]}")]}
+        other = {'netCDF4': [avail_wheels.Wheel.parse_wheel_filename(arch=arch, filename=self.raw_filenames['netCDF4'][2]),
+                             avail_wheels.Wheel.parse_wheel_filename(arch=arch, filename=self.raw_filenames['netCDF4'][3])],
+                 'torch_cpu': [avail_wheels.Wheel.parse_wheel_filename(arch=arch, filename=self.raw_filenames['torch_cpu'][0])]}
 
         ret = avail_wheels.get_wheels(paths=search_paths, pythons=pythons, reqs=None, latest=False)
         self.assertEqual(ret, other)
@@ -459,8 +443,8 @@ class Test_parse_args_method(unittest.TestCase):
     def test_version(self):
         version = '1.2*'
         args = self.parser.parse_args(['--version', version])
-        self.assertIsInstance(args.specifier, specifiers.SpecifierSet)
-        self.assertEqual(args.specifier, specifiers.SpecifierSet(f"=={version}"))
+        self.assertIsInstance(args.specifier, packaging.specifiers.SpecifierSet)
+        self.assertEqual(args.specifier, packaging.specifiers.SpecifierSet(f"=={version}"))
 
     def test_version_noarg(self):
         temp_stdout = StringIO()
@@ -591,10 +575,7 @@ class Test_parse_args_method(unittest.TestCase):
 
 class Test_is_compatible_method(unittest.TestCase):
     def setUp(self):
-        self.wheel = avail_wheels.Wheel("avx/netCDF4-1.3.1-cp27-cp27mu-linux_x86_64.whl")
-
-    def test_is_compatible_none(self):
-        self.assertFalse(avail_wheels.is_compatible(self.wheel, None))
+        self.wheel = avail_wheels.Wheel.parse_wheel_filename(arch="avx", filename="netCDF4-1.3.1-cp27-cp27mu-linux_x86_64.whl")
 
     def test_is_compatible_true(self):
         self.assertTrue(avail_wheels.is_compatible(self.wheel, ['2.7']))
@@ -639,7 +620,7 @@ class Test_get_rexes(unittest.TestCase):
 
 class Test_add_not_available_wheels(unittest.TestCase):
     def setUp(self):
-        self.wheels = defaultdict(list, {'torch_cpu': [avail_wheels.Wheel(filename="torch_cpu", name="torch_cpu", parse=False)], 'numpy': [avail_wheels.Wheel(filename="numpy", name="numpy", parse=False)]})
+        self.wheels = defaultdict(list, {'torch_cpu': [avail_wheels.Wheel(filename="torch_cpu", name="torch_cpu")], 'numpy': [avail_wheels.Wheel(filename="numpy", name="numpy")]})
 
         self.wheel_names = ['a', 'b', 'torch*']
 
@@ -647,18 +628,18 @@ class Test_add_not_available_wheels(unittest.TestCase):
         """ Test that an empty dict of wheels only contains the given wheel names. """
         ret = avail_wheels.add_not_available_wheels(defaultdict(list), self.wheel_names)
 
-        self.assertEqual(ret, {'a': [avail_wheels.Wheel(filename='a', name='a', parse=False)],
-                               'b': [avail_wheels.Wheel(filename='b', name='b', parse=False)],
-                               'torch*': [avail_wheels.Wheel(filename="torch*", name="torch*", parse=False)]})
+        self.assertEqual(ret, {'a': [avail_wheels.Wheel(filename='a', name='a')],
+                               'b': [avail_wheels.Wheel(filename='b', name='b')],
+                               'torch*': [avail_wheels.Wheel(filename="torch*", name="torch*")]})
 
     def test_not_avail(self):
         """ Test that wheels patterns are not added if they previously matched. """
         ret = avail_wheels.add_not_available_wheels(self.wheels, self.wheel_names)
 
-        self.assertEqual(ret, {'a': [avail_wheels.Wheel(filename='a', name='a', parse=False)],
-                               'b': [avail_wheels.Wheel(filename='b', name='b', parse=False)],
-                               'torch_cpu': [avail_wheels.Wheel(filename="torch_cpu", name="torch_cpu", parse=False)],
-                               'numpy': [avail_wheels.Wheel(filename="numpy", name="numpy", parse=False)]})
+        self.assertEqual(ret, {'a': [avail_wheels.Wheel(filename='a', name='a')],
+                               'b': [avail_wheels.Wheel(filename='b', name='b')],
+                               'torch_cpu': [avail_wheels.Wheel(filename="torch_cpu", name="torch_cpu")],
+                               'numpy': [avail_wheels.Wheel(filename="numpy", name="numpy")]})
 
 
 class Test_normalize_name(unittest.TestCase):

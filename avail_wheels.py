@@ -9,11 +9,13 @@ import operator
 import warnings
 import configparser
 from tabulate import tabulate
-from packaging import version, specifiers
+from packaging import version, specifiers, tags
 import wild_requirements as requirements
 from runtime_env import RuntimeEnvironment
 from collections import defaultdict
 from itertools import chain
+from dataclasses import dataclass
+
 
 __version__ = "1.2.0"
 
@@ -32,59 +34,83 @@ def __warning_on_one_line(message, category, filename, lineno, file=None, line=N
 warnings.formatwarning = __warning_on_one_line
 
 
+# The wheel filename is {distribution}-{version}([-+]{build tag})?-{python tag}-{abi tag}-{platform tag}.whl.
+# The version can be numeric, alpha or alphanum or a combinaison.
+WHEEL_RE = re.compile(r"(?P<name>.+?)-(?P<version>.+?)(-(?P<build>\d[^-]*))?-(?P<tags>.+?-.+?-.+?)\.whl")
+
+
+@dataclass
 class Wheel():
     """
     The representation of a wheel and its tags.
+
+    A wheel components are: name, version, build, tags(interpreter, abi, platform)
+    This class also stores the filename and arch (parent folder)
+
+    Examples
+    --------
+    >>> Wheel(filename='numpy-1.20.1-cp38-cp38-linux_x86_64.whl')
+    Wheel(filename='numpy-1.20.1-cp38-cp38-linux_x86_64.whl', arch="", name="", version="", build="", tags=None)
+
+    >>> Wheel.parse_wheel_filename(filename='numpy-1.20.1-cp38-cp38-linux_x86_64.whl')
+    Wheel(filename='numpy-1.20.1-cp38-cp38-linux_x86_64.whl', arch="", name='numpy', version=<Version('1.20.1')>, build=(), tags=frozenset({<cp38-cp38-linux_x86_64 @ 140549067913536>}))
     """
 
-    # The wheel filename is {arch}/{distribution}-{version}([-+]{build tag})?-{python tag}-{abi tag}-{platform tag}.whl.
-    # The version can be numeric, alpha or alphanum or a combinaison.
-    WHEEL_RE = re.compile(r"(?P<arch>\w+)/(?P<name>[\w.]+)-(?P<version>(?:[\w\.]+)?)(?:[\+-](?P<build>\w+))*?-(?P<python>[\w\.]+)-(?P<abi>\w+)-(?P<platform>\w+)")
+    filename: str = ""
+    arch: str = ""
+    name: str = ""
+    version: str = ""
+    build: str = ""
+    tags: frozenset = None
 
-    filename, arch, name, version, build, python, abi, platform = "", "", "", "", "", "", "", ""
-
-    def __init__(self, filename, parse=True, **kwargs):
-        self.filename = filename
-        self.__dict__.update(kwargs)
-
-        if parse:
-            self.parse_tags(filename)
-
-    def parse_tags(self, wheel):
+    @staticmethod
+    def parse_wheel_filename(filename, arch=""):
         """
-        Parse and set wheel tags.
-        The wheel filename is {arch}/{distribution}-{version}([-+]{build tag})?-{python tag}-{abi tag}-{platform tag}.whl.
+        Parse a wheel file into arch, name, version, build, tags(interpreter, abi, platform).
+        A wheel file must end with `.whl` and have 4 or 5 components separated with dashes.
+
+        The format is: {name}-{version}(-{build tag})?-{python tag}-{abi tag}-{platform tag}.whl
+
+        Returns
+        -------
+        Wheel
+            Parsed wheel
         """
-        m = self.WHEEL_RE.match(wheel)
+        m = WHEEL_RE.match(filename)
         if m:
-            self.arch = m.group('arch')
-            self.name = m.group('name')
-            self.version = m.group('version')
-            self.build = m.group('build') or ""
-            self.python = m.group('python')
-            self.abi = m.group('abi')
-            self.platform = m.group('platform')
+            return Wheel(
+                filename=filename,
+                arch=arch,
+                name=m.group('name'),
+                version=m.group('version'),
+                build=m.group('build') or "",  # Build is optional
+                tags=tags.parse_tag(m.group('tags')),
+            )
         else:
-            warnings.warn(f"Could not get tags for : {wheel}")
+            warnings.warn(f"Could not get tags for : {filename}")
+            return Wheel(filename=filename, arch=arch)
 
     def loose_version(self):
         return version.parse(self.version)
 
-    def __str__(self):
-        return self.filename
+    @property
+    def python(self):
+        return ",".join(sorted(set(tag.interpreter for tag in self.tags)))
 
-    def __eq__(self, other):
-        return isinstance(other, Wheel) and self.__dict__ == other.__dict__
+    @property
+    def abi(self):
+        return ",".join(sorted(set(tag.abi for tag in self.tags)))
+
+    @property
+    def platform(self):
+        return ",".join(sorted(set(tag.platform for tag in self.tags)))
 
 
 def is_compatible(wheel, pythons):
     """
-    Verify that the wheel python version is compatible with currently supported python versions.
+    Verify that the wheel tags are compatible with currently supported tags.
     """
-    for p in pythons or []:
-        if wheel.python in env.compatible_pythons[p]:
-            return True
-    return False
+    return any(not wheel.tags.isdisjoint(env.compatible_tags[p]) for p in pythons)
 
 
 def match_file(file, rexes):
@@ -130,7 +156,7 @@ def get_wheels(paths, reqs, pythons, latest):
             for _, _, files in os.walk(f"{path}"):
                 for file in files:
                     if match_file(file, rexes):
-                        wheel = Wheel(f"{arch}/{file}")
+                        wheel = Wheel.parse_wheel_filename(file, arch)
                         if match_version(wheel, reqs) and is_compatible(wheel, pythons):
                             wheels[wheel.name].append(wheel)
     else:
@@ -138,7 +164,7 @@ def get_wheels(paths, reqs, pythons, latest):
             arch = os.path.basename(path)
             for _, _, files in os.walk(f"{path}"):
                 for file in files:
-                    wheel = Wheel(f"{arch}/{file}")
+                    wheel = Wheel.parse_wheel_filename(file, arch)
                     if is_compatible(wheel, pythons):
                         wheels[wheel.name].append(wheel)
 
@@ -150,7 +176,7 @@ def latest_versions(wheels):
     """
     Returns only the latest version of each wheel.
     """
-    latests = {}
+    latests = defaultdict(list)
 
     for wheel_name, wheel_list in wheels.items():
         wheel_list.sort(key=operator.methodcaller('loose_version'), reverse=True)
@@ -216,7 +242,7 @@ def add_not_available_wheels(wheels, reqs):
     for wheel in reqs:
         # Do not duplicate and add names that translate to an already present name.
         if wheel not in wheels and all(not re.match(fnmatch.translate(wheel), w) for w in wheels.keys()):
-            wheels[wheel].append(Wheel(filename=wheel, name=wheel, parse=False))
+            wheels[wheel].append(Wheel(filename=wheel, name=wheel))
 
     return wheels
 
