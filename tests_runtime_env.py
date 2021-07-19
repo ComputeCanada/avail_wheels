@@ -118,8 +118,20 @@ def test_available_architectures(monkeypatch):
     assert RuntimeEnvironment().available_architectures == frozenset(['avx', 'avx2', 'avx512', 'generic', 'sse3'])
 
 
+def test_available_pythons(monkeypatch, tmp_path):
+    """
+    Test that the default available pythons versions are from tmp directory.
+    """
+    pd = tmp_path / "cvmfs/python"
+    for d in ["2.7.18", "3.7.4", "3.8.2"]:
+        (pd / d).mkdir(parents=True)
+
+    monkeypatch.setenv("PYTHON_DIRS", str(pd))
+    assert RuntimeEnvironment().available_pythons == ["2.7", "3.7", "3.8"]
+
+
 @cvmfs
-def test_available_pythons(monkeypatch):
+def test_available_pythons_cvmfs(monkeypatch):
     """
     Test that the default available pythons versions are from CVMFS.
     """
