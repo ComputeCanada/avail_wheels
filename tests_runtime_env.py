@@ -141,9 +141,9 @@ def test_available_pythons_cvmfs(monkeypatch):
 
 def test_compatible_tags():
     """
-    Test that the default compatible pythons versions are from CVMFS.
+    Test the python 3.8 compatible tags.
     """
-    av = '3.8'
+    python = '3.8'
     platform = list(tags._generic_platforms())[0]
     other = frozenset([
         tags.Tag("cp38", "cp38", platform),
@@ -157,5 +157,5 @@ def test_compatible_tags():
     env = RuntimeEnvironment()
 
     assert isinstance(env.compatible_tags, dict)
-    assert isinstance(env.compatible_tags[av], frozenset)
-    assert env.compatible_tags[av] == other
+    assert isinstance(env.compatible_tags[python], frozenset)
+    assert env.compatible_tags[python] == other
