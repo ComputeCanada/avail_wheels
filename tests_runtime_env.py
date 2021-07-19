@@ -5,6 +5,7 @@ import os
 import pytest
 
 
+cvmfs = pytest.mark.skipif(not os.path.isdir("/cvmfs"), reason="tests for /cvmfs only")
 venv = pytest.mark.skipif(os.environ.get('VIRTUAL_ENV') is None, reason="No virtual env are activated.")
 
 
@@ -117,11 +118,11 @@ def test_available_architectures(monkeypatch):
     assert RuntimeEnvironment().available_architectures == frozenset(['avx', 'avx2', 'avx512', 'generic', 'sse3'])
 
 
+@cvmfs
 def test_available_pythons(monkeypatch):
     """
     Test that the default available pythons versions are from CVMFS.
     """
-    # TODO : Add test helper to construct python directories to test
     monkeypatch.delenv("PYTHON_DIRS", raising=False)
     assert RuntimeEnvironment().available_pythons == ["2.7", "3.5", "3.6", "3.7", "3.8", "3.9"]
 
