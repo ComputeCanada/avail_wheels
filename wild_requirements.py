@@ -119,7 +119,7 @@ class Requirement(object):
                 )
             )
 
-        self.name = req.name  # type: str
+        self.name = req.name.replace("-", "_")  # type: str
         if req.url:
             parsed_url = urlparse.urlparse(req.url)
             if parsed_url.scheme == "file":

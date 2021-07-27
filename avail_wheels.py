@@ -247,14 +247,6 @@ def add_not_available_wheels(wheels, reqs):
     return wheels
 
 
-def normalize_name(name):
-    """
-    Normalize wheel names. Replaces `-` for `_`.
-    Pip support names with dashes, but wheel convert them to underscores.
-    """
-    return name.replace('-', '_')
-
-
 def filter_search_paths(search_paths, arch_values):
     """
     Filter paths that ends with specific values.
@@ -327,9 +319,7 @@ def make_requirement(r):
     """
     """
     try:
-        req = requirements.Requirement(r)
-        req.name = normalize_name(req.name)
-        return req
+        return requirements.Requirement(r)
     except ValueError:
         raise argparse.ArgumentTypeError(f"Invalid requirement: {r!r}.")
 

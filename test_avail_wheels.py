@@ -792,21 +792,6 @@ def test_add_not_available_wheels():
     }
 
 
-def test_normalize_name_type():
-    """Test that return type is list."""
-    assert isinstance(avail_wheels.normalize_name(""), str)
-
-
-def test_normalize_name():
-    """Test that normalize empty list, names with multiple dash are converted to underscores."""
-    names = ["", "torch-cpu", "torch_cpu", "torch-cpu.gpu"]
-    truth = ["", "torch_cpu", "torch_cpu", "torch_cpu.gpu"]
-
-    for name, true_name in zip(names, truth):
-        ret = avail_wheels.normalize_name(name)
-        assert ret == true_name
-
-
 def test_filter_search_paths_all_search_paths():
     """
     Test that without any filter values all search paths are returned.
