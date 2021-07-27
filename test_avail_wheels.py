@@ -1,4 +1,3 @@
-import unittest
 from importlib import reload
 from io import StringIO
 from argparse import ArgumentError
@@ -725,7 +724,3 @@ def test_pip_config_file_exists(monkeypatch, pip_config_file):
     res = avail_wheels.get_search_paths()
 
     assert res == other
-
-
-if __name__ == '__main__':
-    unittest.main()
