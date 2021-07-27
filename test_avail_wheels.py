@@ -925,3 +925,58 @@ def test_make_eq_specifier():
     assert avail_wheels.make_eq_specifier("1.2") == packaging.specifiers.SpecifierSet("==1.2")
     assert avail_wheels.make_eq_specifier("1.2*") == packaging.specifiers.SpecifierSet("==1.2*")
     assert avail_wheels.make_eq_specifier("1.2.*") == packaging.specifiers.SpecifierSet("==1.2.*")
+
+
+def test_get_requirements_set_requirements_file(tmp_path):
+    """
+    Test that requirements set comes from command line.
+    Names should also be normalized : dgl-cpu -> dgl_cpu
+    """
+    p = tmp_path / "r1.txt"
+    p.write_text("\n".join(["numpy", "dgl-cpu", "ab.py==1.9"]))
+    p = tmp_path / "r2.txt"
+    p.write_text("\n".join(["scipy"]))
+
+    args = avail_wheels.create_argparser().parse_args(["--requirement", f"{str(tmp_path)}/r1.txt", f"{str(tmp_path)}/r2.txt"])
+
+    assert avail_wheels.get_requirements_set(args) == {
+        "numpy": Requirement("numpy"),
+        "dgl_cpu": Requirement("dgl_cpu"),
+        "ab.py": Requirement("ab.py==1.9"),
+        "scipy": Requirement("scipy"),
+    }
+
+
+def test_get_requirements_set_requirements_file_and_names(tmp_path):
+    """
+    Test that requirements set comes from command line.
+    Names should also be normalized : dgl-cpu -> dgl_cpu.
+    Duplicates should not exists.
+    Names from the command line are prioritize over duplicates entry from requirements files.
+    """
+    p = tmp_path / "requirements.txt"
+    p.write_text("\n".join(["numpy", "dgl-cpu", "ab.py==1.9"]))
+
+    args = avail_wheels.create_argparser().parse_args(["torch", "dgl-cpu==1.0", "--requirement", f"{str(tmp_path)}/requirements.txt"])
+
+    assert avail_wheels.get_requirements_set(args) == {
+        "torch": Requirement("torch"),
+        "dgl_cpu": Requirement("dgl_cpu==1.0"),
+        "numpy": Requirement("numpy"),
+        "ab.py": Requirement("ab.py==1.9"),
+    }
+
+
+def test_get_requirements_set_from_names():
+    """
+    Test that requirements set comes from command line.
+    Names should also be normalized : dgl-cpu -> dgl_cpu.
+    Duplicates should not exists.
+    """
+    args = avail_wheels.create_argparser().parse_args(["torch", "dgl-cpu", "ab.py==1.9"])
+
+    assert avail_wheels.get_requirements_set(args) == {
+        "torch": Requirement("torch"),
+        "dgl_cpu": Requirement("dgl_cpu"),
+        "ab.py": Requirement("ab.py==1.9"),
+    }

@@ -287,13 +287,6 @@ def get_requirements_set(args):
 
     reqs = defaultdict(requirements.Requirement)
 
-    # Add requirements from the command line.
-    for req in chain(args.wheel, args.name):
-        if args.specifier:
-            reqs[req.name] = requirements.Requirement(f"{req.name}{args.specifier}")
-        else:
-            reqs[req.name] = req
-
     # And add requirements from requirements files.
     if args.requirements:
         # Include here, as importing is slow!
@@ -303,7 +296,14 @@ def get_requirements_set(args):
                 r = requirements.Requirement(freq.requirement)
                 reqs[r.name] = r
 
-    return dict(reqs) if len(reqs) != 0 else None
+    # Then add requirements from the command line so they are prioritize.
+    for req in chain(args.wheel, args.name):
+        if args.specifier:
+            reqs[req.name] = requirements.Requirement(f"{req.name}{args.specifier}")
+        else:
+            reqs[req.name] = req
+
+    return reqs if len(reqs) != 0 else None
 
 
 def make_eq_specifier(v):
