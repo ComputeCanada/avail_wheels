@@ -1,4 +1,3 @@
-from importlib import reload
 from io import StringIO
 from argparse import ArgumentError
 from contextlib import redirect_stderr
@@ -691,8 +690,8 @@ def test_no_pip_config_file(monkeypatch, wheelhouse):
     # TODO : Add test for cvmfs
     monkeypatch.delenv("PIP_CONFIG_FILE", raising=False)
     monkeypatch.setenv("WHEELHOUSE", str(wheelhouse))
-    reload(avail_wheels)  # Must reload script for env to be known
-    # TODO : get rid of reload, env = RuntimeEnvironment()
+    avail_wheels.env = RuntimeEnvironment()
+
     other = sorted([f"{str(wheelhouse)}/{p}" for p in ["generic/generic", "gentoo/avx2", "gentoo/generic", "nix/avx2", "nix/generic"]])
     res = sorted(avail_wheels.get_search_paths())
 
@@ -706,7 +705,7 @@ def test_pip_config_file_empty(monkeypatch, wheelhouse):
     # TODO : Add test for cvmfs
     monkeypatch.setenv("PIP_CONFIG_FILE", "")
     monkeypatch.setenv("WHEELHOUSE", str(wheelhouse))
-    reload(avail_wheels)  # Must reload script for env to be known
+    avail_wheels.env = RuntimeEnvironment()
 
     other = sorted([f"{str(wheelhouse)}/{p}" for p in ["generic/generic", "gentoo/avx2", "gentoo/generic", "nix/avx2", "nix/generic"]])
     res = sorted(avail_wheels.get_search_paths())
