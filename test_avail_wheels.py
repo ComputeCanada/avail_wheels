@@ -15,7 +15,9 @@ import pytest
 TEST_STACKS = ["generic", "nix", "gentoo"]
 TEST_ARCHS = ["avx2", "generic"]
 
-
+cvmfs = pytest.mark.skipif(
+    not os.path.isdir("/cvmfs"), reason="tests for /cvmfs only"
+)
 venv = pytest.mark.skipif(
     os.environ.get("VIRTUAL_ENV") is None, reason="No virtual env are activated."
 )
@@ -75,6 +77,18 @@ def pip_config_file(tmp_path):
     p.write_text(content)
 
     return p
+
+
+@pytest.fixture
+def python_dirs(monkeypatch, tmp_path):
+    pd = tmp_path / "python/2017"
+    for d in ["2.7.18", "3.7.4", "3.8.2"]:
+        (pd / d).mkdir(parents=True)
+
+    pd = tmp_path / "python/2021"
+    (pd / "3.9.6").mkdir(parents=True)
+
+    monkeypatch.setenv("PYTHON_DIRS", f"{str(tmp_path)}/python/2017:{str(tmp_path)}/python/2021")
 
 
 def test_wheel_ctor_kwargs():
@@ -488,14 +502,28 @@ def test_parse_args_default_python_module(monkeypatch):
     assert avail_wheels.create_argparser().get_default("python") == ["3.6"]
 
 
-def test_parse_args_default_nopython(monkeypatch):
+@cvmfs
+def test_parse_args_default_nopython_cvmfs(monkeypatch):
     """ Test that default argument parser value for --python is from available pythons version."""
     monkeypatch.delenv("VIRTUAL_ENV", raising=False)
     monkeypatch.delenv("EBVERSIONPYTHON", raising=False)
 
-    env = RuntimeEnvironment()
-    avail_wheels.env = env
-    assert avail_wheels.create_argparser().get_default("python") == env.available_pythons
+    avail_wheels.env = RuntimeEnvironment()
+    assert avail_wheels.create_argparser().get_default("python") == avail_wheels.env.available_pythons
+
+
+def test_parse_args_default_nopython(monkeypatch, tmp_path):
+    """ Test that default argument parser value for --python is from available pythons version."""
+    monkeypatch.delenv("VIRTUAL_ENV", raising=False)
+    monkeypatch.delenv("EBVERSIONPYTHON", raising=False)
+    monkeypatch.setenv("PYTHON_DIRS", f"{str(tmp_path)}/python/2017")
+
+    pd = tmp_path / "python/2017"
+    for d in ["2.7.18", "3.7.4", "3.8.2"]:
+        (pd / d).mkdir(parents=True)
+
+    avail_wheels.env = RuntimeEnvironment()
+    assert avail_wheels.create_argparser().get_default("python") == ["2.7", "3.7", "3.8"]
 
 
 def test_parse_args_default_name():
@@ -591,9 +619,9 @@ def test_parse_args_arch_noarg():
                 avail_wheels.create_argparser().parse_args(["--arch"])
 
 
-def test_parse_args_many_python():
+def test_parse_args_many_python(python_dirs):
     """ Test that --python is a list of given values. """
-    python = ["3.6", "3.7"]
+    python = ["3.7", "3.8"]
     args = avail_wheels.create_argparser().parse_args(["--python", *python])
     assert isinstance(args.python, list)
     assert args.python == python
@@ -666,14 +694,17 @@ def test_parse_args_requirement_files():
     assert args.requirements == ["requirement.txt", "reqs.txt"]
 
 
-def test_is_compatible_true():
+def test_is_compatible_true(python_dirs):
     """ Test that wheel is compatible. """
+    avail_wheels.env = RuntimeEnvironment()
     wheel = avail_wheels.Wheel.parse_wheel_filename("netCDF4-1.3.1-cp27-cp27mu-linux_x86_64.whl")
     assert avail_wheels.is_compatible(wheel, ["2.7"])
 
 
-def test_is_compatible_compressed_tags_true():
+def test_is_compatible_compressed_tags_true(python_dirs):
     """ Test that compressed tags set are supported. """
+    avail_wheels.env = RuntimeEnvironment()
+
     wheel = avail_wheels.Wheel.parse_wheel_filename("shiboken2-5.15.0-5.15.0-cp35.cp36.cp37.cp38-abi3-linux_x86_64.whl")
     assert avail_wheels.is_compatible(wheel, ["3.8"])
 
@@ -681,16 +712,16 @@ def test_is_compatible_compressed_tags_true():
     assert avail_wheels.is_compatible(wheel, ["3.9"])
 
 
-def test_is_compatible_false():
+def test_is_compatible_false(python_dirs):
     """ Test that wheel is not compatible for a given python. """
-    wheel = avail_wheels.Wheel.parse_wheel_filename("netCDF4-1.3.1-cp27-cp27mu-linux_x86_64.whl")
-    assert not avail_wheels.is_compatible(wheel, ["3.5"])
+    avail_wheels.env = RuntimeEnvironment()
+    wheel = avail_wheels.Wheel.parse_wheel_filename("netCDF4-1.3.1-cp39-cp39-linux_x86_64.whl")
+    assert not avail_wheels.is_compatible(wheel, ["2.7"])
 
 
-def test_is_compatible_many():
+def test_is_compatible_many(python_dirs):
     """ Test that wheel is compatible for many given python. """
-    # TODO: add cvmfs test
-    # TODO: monkeypatch
+    avail_wheels.env = RuntimeEnvironment()
     wheel = avail_wheels.Wheel.parse_wheel_filename("netCDF4-1.3.1-cp27-cp27mu-linux_x86_64.whl")
     assert avail_wheels.is_compatible(wheel, ["2.7", "3.8"])
 
