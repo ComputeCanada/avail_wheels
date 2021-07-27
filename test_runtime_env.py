@@ -122,12 +122,18 @@ def test_available_pythons(monkeypatch, tmp_path):
     """
     Test that the default available pythons versions are from tmp directory.
     """
-    pd = tmp_path / "cvmfs/python"
+    pd = tmp_path / "python/2017"
     for d in ["2.7.18", "3.7.4", "3.8.2"]:
         (pd / d).mkdir(parents=True)
 
-    monkeypatch.setenv("PYTHON_DIRS", str(pd))
+    monkeypatch.setenv("PYTHON_DIRS", f"{str(tmp_path)}/python/2017")
     assert RuntimeEnvironment().available_pythons == ["2.7", "3.7", "3.8"]
+
+    pd = tmp_path / "python/2021"
+    (pd / "3.9.6").mkdir(parents=True)
+
+    monkeypatch.setenv("PYTHON_DIRS", f"{str(tmp_path)}/python/2017:{str(tmp_path)}/python/2021")
+    assert RuntimeEnvironment().available_pythons == ["2.7", "3.7", "3.8", "3.9"]
 
 
 @cvmfs
