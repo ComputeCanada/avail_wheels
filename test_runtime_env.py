@@ -5,8 +5,12 @@ import os
 import pytest
 
 
-cvmfs = pytest.mark.skipif(not os.path.isdir("/cvmfs"), reason="tests for /cvmfs only")
-venv = pytest.mark.skipif(os.environ.get('VIRTUAL_ENV') is None, reason="No virtual env are activated.")
+cvmfs = pytest.mark.skipif(
+    not os.path.isdir("/cvmfs"), reason="tests for /cvmfs only"
+)
+venv = pytest.mark.skipif(
+    os.environ.get("VIRTUAL_ENV") is None, reason="No virtual env are activated."
+)
 
 
 def test_wheelhouse_default(monkeypatch):
@@ -45,8 +49,8 @@ def test_current_python_default(monkeypatch):
     """
     Test that the default current_python is None
     """
-    monkeypatch.delenv('VIRTUAL_ENV', raising=False)
-    monkeypatch.delenv('EBVERSIONPYTHON', raising=False)
+    monkeypatch.delenv("VIRTUAL_ENV", raising=False)
+    monkeypatch.delenv("EBVERSIONPYTHON", raising=False)
 
     assert RuntimeEnvironment().current_python is None
 
@@ -56,8 +60,8 @@ def test_current_python_variable_module(monkeypatch):
     Test that the current python version is read from EBVERSIONPYTHON enviroment variable.
     """
     v = "3.8.2"
-    monkeypatch.setenv('EBVERSIONPYTHON', v)
-    monkeypatch.delenv('VIRTUAL_ENV', raising=False)
+    monkeypatch.setenv("EBVERSIONPYTHON", v)
+    monkeypatch.delenv("VIRTUAL_ENV", raising=False)
 
     assert RuntimeEnvironment().current_python == v
 
@@ -68,7 +72,7 @@ def test_current_python_variable_venv(monkeypatch):
     Test that the current python version is read from VIRTUAL_ENV enviroment variable.
     """
     v = sys.version_info
-    monkeypatch.delenv('EBVERSIONPYTHON', raising=False)
+    monkeypatch.delenv("EBVERSIONPYTHON", raising=False)
 
     assert RuntimeEnvironment().current_python == f"{v.major}.{v.minor}.{v.micro}"
 
@@ -79,10 +83,12 @@ def test_python_dirs_default(monkeypatch):
         /cvmfs/soft.computecanada.ca/easybuild/software/20*/Core/python:/cvmfs/soft.computecanada.ca/easybuild/software/20*/*/Core/python
     """
     monkeypatch.delenv("PYTHON_DIRS", raising=False)
-    assert RuntimeEnvironment().python_directories == ":".join([
-        "/cvmfs/soft.computecanada.ca/easybuild/software/20*/Core/python",
-        "/cvmfs/soft.computecanada.ca/easybuild/software/20*/*/Core/python",
-    ])
+    assert RuntimeEnvironment().python_directories == ":".join(
+        [
+            "/cvmfs/soft.computecanada.ca/easybuild/software/20*/Core/python",
+            "/cvmfs/soft.computecanada.ca/easybuild/software/20*/*/Core/python",
+        ]
+    )
 
 
 def test_python_dirs_variable(monkeypatch):
@@ -115,7 +121,9 @@ def test_available_architectures(monkeypatch):
     Test that the default available_architectures is a frozenset(['avx', 'avx2', 'avx512', 'generic', 'sse3'])
     """
     assert isinstance(RuntimeEnvironment().available_architectures, frozenset)
-    assert RuntimeEnvironment().available_architectures == frozenset(['avx', 'avx2', 'avx512', 'generic', 'sse3'])
+    assert RuntimeEnvironment().available_architectures == frozenset(
+        ["avx", "avx2", "avx512", "generic", "sse3"]
+    )
 
 
 def test_available_pythons(monkeypatch, tmp_path):
@@ -149,17 +157,19 @@ def test_compatible_tags():
     """
     Test the python 3.8 compatible tags.
     """
-    python = '3.8'
+    python = "3.8"
     platform = list(tags._generic_platforms())[0]
-    other = frozenset([
-        tags.Tag("cp38", "cp38", platform),
-        tags.Tag("cp38", "abi3", platform),
-        tags.Tag("cp38", "none", platform),
-        tags.Tag("py38", "none", platform),
-        tags.Tag("py3", "none", platform),
-        tags.Tag("py38", "none", "any"),
-        tags.Tag("py3", "none", "any"),
-    ])
+    other = frozenset(
+        [
+            tags.Tag("cp38", "cp38", platform),
+            tags.Tag("cp38", "abi3", platform),
+            tags.Tag("cp38", "none", platform),
+            tags.Tag("py38", "none", platform),
+            tags.Tag("py3", "none", platform),
+            tags.Tag("py38", "none", "any"),
+            tags.Tag("py3", "none", "any"),
+        ]
+    )
     env = RuntimeEnvironment()
 
     assert isinstance(env.compatible_tags, dict)
