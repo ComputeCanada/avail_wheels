@@ -581,24 +581,32 @@ def test_parse_args_requirement_files():
     assert args.requirements == ["requirement.txt", "reqs.txt"]
 
 
-@pytest.fixture
-def compatible_wheel():
-    # TODO : test compressed tag set
-    return avail_wheels.Wheel.parse_wheel_filename(arch="avx", filename="netCDF4-1.3.1-cp27-cp27mu-linux_x86_64.whl")
+def test_is_compatible_true():
+    wheel = avail_wheels.Wheel.parse_wheel_filename("netCDF4-1.3.1-cp27-cp27mu-linux_x86_64.whl")
+    assert avail_wheels.is_compatible(wheel, ['2.7'])
 
 
-def test_is_compatible_true(compatible_wheel):
-    assert avail_wheels.is_compatible(compatible_wheel, ['2.7'])
+def test_is_compatible_compressed_tags_true():
+    """
+    Test that compressed tags set are supported.
+    """
+    wheel = avail_wheels.Wheel.parse_wheel_filename("shiboken2-5.15.0-5.15.0-cp35.cp36.cp37.cp38-abi3-linux_x86_64.whl")
+    assert avail_wheels.is_compatible(wheel, ['3.8'])
+
+    wheel = avail_wheels.Wheel.parse_wheel_filename("pydicom-1.1.0-1-py2.py3-none-any.whl")
+    assert avail_wheels.is_compatible(wheel, ['3.9'])
 
 
-def test_is_compatible_false(compatible_wheel):
-    assert not avail_wheels.is_compatible(compatible_wheel, ['3.5'])
+def test_is_compatible_false():
+    wheel = avail_wheels.Wheel.parse_wheel_filename("netCDF4-1.3.1-cp27-cp27mu-linux_x86_64.whl")
+    assert not avail_wheels.is_compatible(wheel, ['3.5'])
 
 
-def test_is_compatible_many(compatible_wheel):
+def test_is_compatible_many():
     # TODO: add cvmfs test
     # TODO: monkeypatch
-    assert avail_wheels.is_compatible(compatible_wheel, avail_wheels.env.available_pythons)
+    wheel = avail_wheels.Wheel.parse_wheel_filename("netCDF4-1.3.1-cp27-cp27mu-linux_x86_64.whl")
+    assert avail_wheels.is_compatible(wheel, ['2.7', '3.8'])
 
 
 def test_match_file_sensitive_true():
