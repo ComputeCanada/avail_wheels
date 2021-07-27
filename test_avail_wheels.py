@@ -550,12 +550,6 @@ def test_parse_args_all_versions():
     assert args.all_versions
 
 
-def test_parse_args_arch():
-    args = avail_wheels.create_argparser().parse_args(["--arch", "avx2"])
-    assert isinstance(args.arch, list)
-    assert args.arch == ["avx2"]
-
-
 def test_parse_args_all_archs():
     """ Test that --all_arch is True when given. """
     args = avail_wheels.create_argparser().parse_args(["--all_archs"])
@@ -578,12 +572,6 @@ def test_parse_args_arch_noarg():
         with pytest.raises(SystemExit):
             with pytest.raises(ArgumentError):
                 avail_wheels.create_argparser().parse_args(["--arch"])
-
-
-def test_parse_args_python():
-    args = avail_wheels.create_argparser().parse_args(["--python", "3.7"])
-    assert isinstance(args.python, list)
-    assert args.python == ["3.7"]
 
 
 def test_parse_args_many_python():
@@ -610,12 +598,6 @@ def test_parse_args_all_pythons():
     assert args.all_pythons
 
 
-def test_parse_args_name():
-    args = avail_wheels.create_argparser().parse_args(["--name", "thename"])
-    assert isinstance(args.name, list)
-    assert args.name[0].name == "thename"
-
-
 def test_parse_args_names():
     """ Test that --name is a list of given values. """
     names = ["thename", "thename2"]
@@ -631,12 +613,6 @@ def test_parse_args_name_noarg():
         with pytest.raises(SystemExit):
             with pytest.raises(ArgumentError):
                 avail_wheels.create_argparser().parse_args(["--name"])
-
-
-def test_parse_args_wheel():
-    args = avail_wheels.create_argparser().parse_args(["thename"])
-    assert isinstance(args.wheel, list)
-    assert args.wheel[0].name == "thename"  # No eq op exists for a requirement
 
 
 def test_parse_args_wheels():
@@ -661,16 +637,6 @@ def test_parse_args_requirement_noarg():
         with pytest.raises(SystemExit):
             with pytest.raises(ArgumentError):
                 avail_wheels.create_argparser().parse_args(["--requirement"])
-
-
-def test_parse_args_requirement_file():
-    """
-    Test one requirement file.
-    """
-    args = avail_wheels.create_argparser().parse_args(["--requirement", "requirement.txt"])
-
-    assert isinstance(args.requirements, list)
-    assert args.requirements == ["requirement.txt"]
 
 
 def test_parse_args_requirement_files():
