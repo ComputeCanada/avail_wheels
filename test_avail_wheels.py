@@ -3,6 +3,8 @@ from argparse import ArgumentError
 from contextlib import redirect_stderr
 from fnmatch import translate
 import re
+import sys
+import os
 import avail_wheels
 from runtime_env import RuntimeEnvironment
 from collections import defaultdict
@@ -12,6 +14,11 @@ import pytest
 
 TEST_STACKS = ["generic", "nix", "gentoo"]
 TEST_ARCHS = ["avx2", "generic"]
+
+
+venv = pytest.mark.skipif(
+    os.environ.get("VIRTUAL_ENV") is None, reason="No virtual env are activated."
+)
 
 
 @pytest.fixture
@@ -461,7 +468,17 @@ def test_parse_args_default_noarch(monkeypatch):
     assert avail_wheels.create_argparser().get_default("arch") is None
 
 
-def test_parse_args_default_python(monkeypatch):
+@venv
+def test_parse_args_default_python_venv(monkeypatch):
+    """ Test that default argument parser value for --python is provided by VIRTUAL_ENV. """
+    monkeypatch.delenv("EBVERSIONPYTHON", raising=False)
+
+    v = sys.version_info  # venv interpreter version
+    avail_wheels.env = RuntimeEnvironment()
+    assert avail_wheels.create_argparser().get_default("python") == [f"{v.major}.{v.minor}"]
+
+
+def test_parse_args_default_python_module(monkeypatch):
     """ Test that default argument parser value for --python is provided by EBVERSIONPYTHON. """
     # TODO: add test for virtual env.
     monkeypatch.delenv("VIRTUAL_ENV", raising=False)
