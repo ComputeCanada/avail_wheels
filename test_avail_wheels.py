@@ -884,3 +884,36 @@ def test_search_paths_pip_config_file_exists(monkeypatch, pip_config_file):
     res = avail_wheels.get_search_paths()
 
     assert res == other
+
+
+def test_make_requirement_name():
+    """ Test that named requirement is valid and normalized. """
+    assert avail_wheels.make_requirement("name") == Requirement("name")
+    assert avail_wheels.make_requirement("name.name-cpu") == Requirement("name.name_cpu")
+
+
+def test_make_requirement_wildname_suffix():
+    """
+    Test that named requirement with an ending wildcard (*) is valid.
+    Test that named requirement with an starting wildcard (*) is valid.
+    Test that named requirement with an ending and starting wildcard (*) is valid.
+    """
+    assert avail_wheels.make_requirement("name*") == Requirement("name*")
+    assert avail_wheels.make_requirement("*name") == Requirement("*name")
+    assert avail_wheels.make_requirement("*name*") == Requirement("*name*")
+
+
+def test_make_requirement_wildname_version():
+    """ Test that requirement with wildcard in name and version is valid. """
+    assert avail_wheels.make_requirement("*name*==1.2") == Requirement("*name*==1.2")
+    assert avail_wheels.make_requirement("*name*==1.2*") == Requirement("*name*==1.2*")
+    assert avail_wheels.make_requirement("*name*==1.2.*") == Requirement("*name*==1.2.*")
+
+
+def test_make_requirement_invalid():
+    """ Test that an exception is raise when an invalid requirement is given """
+    with pytest.raises(Exception):
+        avail_wheels.make_requirement("*na*e*")
+
+    with pytest.raises(Exception):
+        avail_wheels.make_requirement("*")

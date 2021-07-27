@@ -159,3 +159,9 @@ class Requirement(object):
     def __repr__(self):
         # type: () -> str
         return "<Requirement({0!r})>".format(str(self))
+
+    def __eq__(self, other):
+        if not isinstance(other, Requirement):
+            return False
+
+        return self.__dict__ == other.__dict__
