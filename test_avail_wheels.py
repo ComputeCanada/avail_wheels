@@ -784,7 +784,7 @@ def test_filter_search_paths_arch():
     ]
 
 
-def test_no_pip_config_file(monkeypatch, wheelhouse):
+def test_search_paths_no_pip_config_file(monkeypatch, wheelhouse):
     """
     Test that no PIP_CONFIG_FILE environment variable exists.
     Search paths are all directories from the wheelhouse.
@@ -811,7 +811,7 @@ def test_no_pip_config_file(monkeypatch, wheelhouse):
     assert res == other
 
 
-def test_pip_config_file_empty(monkeypatch, wheelhouse):
+def test_search_paths_pip_config_file_empty(monkeypatch, wheelhouse):
     """
     Test that PIP_CONFIG_FILE environment variable exists but empty, entire wheelhouse is actually searched.
     """
@@ -837,7 +837,7 @@ def test_pip_config_file_empty(monkeypatch, wheelhouse):
     assert res == other
 
 
-def test_pip_config_file_exists(monkeypatch, pip_config_file):
+def test_search_paths_pip_config_file_exists(monkeypatch, pip_config_file):
     """
     Test that PIP_CONFIG_FILE environment variable exists and use the configuration file.
     """
