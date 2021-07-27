@@ -71,6 +71,9 @@ def pip_config_file(tmp_path):
 
 
 def test_wheel_ctor_kwargs():
+    """
+    Test that Wheel constructor set correctly and exactly all given properties.
+    """
     tags = packaging.tags.parse_tag("cp36-cp36m-linux_x86_64")
     wheel = avail_wheels.Wheel(
         filename="file",
@@ -92,6 +95,9 @@ def test_wheel_ctor_kwargs():
 
 
 def test_wheel_parse_tags():
+    """
+    Test that Wheel parse_wheel_filename correctly parse wheel parts.
+    """
     filenames = [
         ("avx2", "netCDF4-1.3.1-cp36-cp36m-linux_x86_64.whl"),
         ("avx", "tensorflow_cpu-1.6.0+computecanada-cp36-cp36m-linux_x86_64.whl"),
@@ -169,6 +175,9 @@ def test_wheel_loose_version():
 
 
 def test_latest_versions_method_all_pythons():
+    """
+    Test that the latest version are returned.
+    """
     # TODO : test with build and local version as well
     wheels = {
         "netCDF4": [
@@ -239,10 +248,13 @@ def to_be_sorted_wheels():
 
 
 def test_sort_type():
+    """ Test that sort method return type is a list. """
     assert isinstance(avail_wheels.sort({}, None), list)
 
 
 def test_sort_columns(to_be_sorted_wheels):
+    """ Test that sort returns wheels grouped by name, sorted desc by version, python, arch """
+
     # TODO: Break down the sort tests into columns tests
     # TODO: Add test with a build
     assert avail_wheels.sort(to_be_sorted_wheels, avail_wheels.HEADERS) == [
@@ -269,6 +281,7 @@ def test_sort_columns(to_be_sorted_wheels):
 
 
 def test_sort_condense(to_be_sorted_wheels):
+    """ Test that sort return condensed information on one line. """
     assert avail_wheels.sort(to_be_sorted_wheels, avail_wheels.HEADERS, True) == [
         ["botocore", "1.10.63, 1.10.57, 1.9.11, 1.9.5", "", "py2,py3", "generic"],
         ["netCDF4", "1.4.0, 1.3.1, 1.2.8", "", "cp36, cp35, cp27", "sse3, generic, avx2, avx"],
@@ -279,7 +292,7 @@ def test_sort_condense(to_be_sorted_wheels):
 
 # TODO: Add test for PIP_CONFIG_FILE=""
 def test_get_wheels_all_archs_all_pythons(wheelhouse):
-
+    """ Test that get wheels returns wheels for all arch and all pythons. """
     search_paths = [f"{str(wheelhouse)}/gentoo/{arch}" for arch in TEST_ARCHS]
     other = {
         "scipy": [
@@ -308,6 +321,7 @@ def test_get_wheels_all_archs_all_pythons(wheelhouse):
 
 
 def test_get_wheels_arch_all_pythons(wheelhouse):
+    """ Test that get wheels returns wheel for a given arch and all pythons. """
     arch = "generic"
     search_paths = [f"{str(wheelhouse)}/gentoo/{arch}"]
     other = {
@@ -332,6 +346,7 @@ def test_get_wheels_arch_all_pythons(wheelhouse):
 
 
 def test_get_wheels_exactname_arch_python(wheelhouse):
+    """ Test that get wheels returns wheels for the exact requirements and python """
     arch = "generic"
     search_paths = [f"{str(wheelhouse)}/gentoo/{arch}"]
     pythons = ["3.6"]
@@ -353,6 +368,7 @@ def test_get_wheels_exactname_arch_python(wheelhouse):
 
 
 def test_get_wheels_wildname_arch_python(wheelhouse):
+    """ Test that get wheels returns wheel for a wildcard named requirement. """
     arch = "generic"
     search_paths = [f"{str(wheelhouse)}/gentoo/{arch}"]
     pythons = ["3.6"]
@@ -374,6 +390,7 @@ def test_get_wheels_wildname_arch_python(wheelhouse):
 
 
 def test_get_wheels_wildname_arch_python_version(wheelhouse):
+    """ Test that get wheels returns wheel for a wildcard named and specifier requirement. """
     arch = "generic"
     search_paths = [f"{str(wheelhouse)}/gentoo/{arch}"]
     pythons = ["3.6"]
@@ -395,6 +412,7 @@ def test_get_wheels_wildname_arch_python_version(wheelhouse):
 
 
 def test_get_wheels_wildversion_wildname_arch_python(wheelhouse):
+    """ Test that get wheels returns wheel for a wildcard name and wildcard specifier requirement. """
     search_paths = [f"{str(wheelhouse)}/gentoo/generic"]
     pythons = ["3.6"]
     wildname = "*scipy*"
@@ -415,6 +433,7 @@ def test_get_wheels_wildversion_wildname_arch_python(wheelhouse):
 
 
 def test_get_wheels_wrongversion_wildname_arch_python(wheelhouse):
+    """ Test that get wheels do not returns wheel for a wildcard named requirement. """
     search_paths = [f"{str(wheelhouse)}/gentoo/avx2"]
     pythons = ["3.6"]
     wildname = "*scipy*"
@@ -431,17 +450,19 @@ def test_get_wheels_wrongversion_wildname_arch_python(wheelhouse):
 
 
 def test_parse_args_default_arch():
+    """ Test that default argument parser value for --arch is None """
     # TODO: monkeypatch
     assert avail_wheels.create_argparser().get_default("arch") is None
 
 
 def test_parse_args_default_noarch(monkeypatch):
-    """Special case (eg on personnal system)."""
+    """ Test that default argument parser value for --arch is None when RSNT_ARCH do not exists."""
     monkeypatch.delenv("RSNT_ARCH", raising=False)
     assert avail_wheels.create_argparser().get_default("arch") is None
 
 
 def test_parse_args_default_python(monkeypatch):
+    """ Test that default argument parser value for --python is provided by EBVERSIONPYTHON. """
     # TODO: add test for virtual env.
     monkeypatch.delenv("VIRTUAL_ENV", raising=False)
     monkeypatch.setenv("EBVERSIONPYTHON", "3.6.10")
@@ -451,7 +472,7 @@ def test_parse_args_default_python(monkeypatch):
 
 
 def test_parse_args_default_nopython(monkeypatch):
-    """Special case when no modules are loaded or on personnal system."""
+    """ Test that default argument parser value for --python is from available pythons version."""
     monkeypatch.delenv("VIRTUAL_ENV", raising=False)
     monkeypatch.delenv("EBVERSIONPYTHON", raising=False)
 
@@ -461,42 +482,52 @@ def test_parse_args_default_nopython(monkeypatch):
 
 
 def test_parse_args_default_name():
+    """ Test that default argument parser value for --name is an empty list."""
     assert avail_wheels.create_argparser().get_default("name") == []
 
 
 def test_parse_args_default_wheel():
+    """ Test that default argument parser value for positional wheel is None."""
     assert avail_wheels.create_argparser().get_default("wheel") is None
 
 
 def test_parse_args_default_version():
+    """ Test that default argument parser value for --version is None."""
     assert avail_wheels.create_argparser().get_default("version") is None
 
 
 def test_parse_args_default_columns():
+    """ Test that default argument parser value for --column are the available headers. """
     assert avail_wheels.create_argparser().get_default("column") == avail_wheels.HEADERS
 
 
 def test_parse_args_default_all_versions():
+    """ Test that default argument parser value for --all_version is False. """
     assert not avail_wheels.create_argparser().get_default("all_versions")
 
 
 def test_parse_args_default_all_pythons():
+    """ Test that default argument parser value for --all_python is False. """
     assert not avail_wheels.create_argparser().get_default("all_pythons")
 
 
 def test_parse_args_default_all_archs():
+    """ Test that default argument parser value for --all_archs is False. """
     assert not avail_wheels.create_argparser().get_default("all_archs")
 
 
 def test_parse_args_default_raw():
+    """ Test that default argument parser value for --raw is False. """
     assert not avail_wheels.create_argparser().get_default("raw")
 
 
 def test_parse_args_default_mediawiki():
+    """ Test that default argument parser value for --mediawiki is False. """
     assert not avail_wheels.create_argparser().get_default("mediawiki")
 
 
 def test_parse_args_version():
+    """ Test that --version is and support the wildcard version. """
     version = "1.2*"
     args = avail_wheels.create_argparser().parse_args(["--version", version])
     assert isinstance(args.specifier, packaging.specifiers.SpecifierSet)
@@ -504,6 +535,7 @@ def test_parse_args_version():
 
 
 def test_parse_args_version_noarg():
+    """ Test that --version raises when no argument are provided. """
     temp_stdout = StringIO()
     with redirect_stderr(temp_stdout):
         with pytest.raises(SystemExit):
@@ -512,6 +544,7 @@ def test_parse_args_version_noarg():
 
 
 def test_parse_args_all_versions():
+    """ Test that --all_version is True when given. """
     args = avail_wheels.create_argparser().parse_args(["--all_version"])
     assert isinstance(args.all_versions, bool)
     assert args.all_versions
@@ -524,12 +557,14 @@ def test_parse_args_arch():
 
 
 def test_parse_args_all_archs():
+    """ Test that --all_arch is True when given. """
     args = avail_wheels.create_argparser().parse_args(["--all_archs"])
     assert isinstance(args.all_archs, bool)
     assert args.all_archs
 
 
 def test_parse_args_many_arch():
+    """ Test that --arch is a list of given values. """
     arch = ["avx2", "avx"]
     args = avail_wheels.create_argparser().parse_args(["--arch", *arch])
     assert isinstance(args.arch, list)
@@ -537,6 +572,7 @@ def test_parse_args_many_arch():
 
 
 def test_parse_args_arch_noarg():
+    """ Test that --arch raises when no value is given. """
     temp_stdout = StringIO()
     with redirect_stderr(temp_stdout):
         with pytest.raises(SystemExit):
@@ -551,6 +587,7 @@ def test_parse_args_python():
 
 
 def test_parse_args_many_python():
+    """ Test that --python is a list of given values. """
     python = ["3.6", "3.7"]
     args = avail_wheels.create_argparser().parse_args(["--python", *python])
     assert isinstance(args.python, list)
@@ -558,6 +595,7 @@ def test_parse_args_many_python():
 
 
 def test_parse_args_python_noarg():
+    """ Test that --python raises when no value is given. """
     temp_stdout = StringIO()
     with redirect_stderr(temp_stdout):
         with pytest.raises(SystemExit):
@@ -566,6 +604,7 @@ def test_parse_args_python_noarg():
 
 
 def test_parse_args_all_pythons():
+    """ Test that --all_python is True when given. """
     args = avail_wheels.create_argparser().parse_args(["--all_pythons"])
     assert isinstance(args.all_pythons, bool)
     assert args.all_pythons
@@ -578,6 +617,7 @@ def test_parse_args_name():
 
 
 def test_parse_args_names():
+    """ Test that --name is a list of given values. """
     names = ["thename", "thename2"]
     args = avail_wheels.create_argparser().parse_args(["--name", *names])
     assert isinstance(args.name, list)
@@ -585,6 +625,7 @@ def test_parse_args_names():
 
 
 def test_parse_args_name_noarg():
+    """ Test that --name raises when no value is given. """
     temp_stdout = StringIO()
     with redirect_stderr(temp_stdout):
         with pytest.raises(SystemExit):
@@ -599,6 +640,7 @@ def test_parse_args_wheel():
 
 
 def test_parse_args_wheels():
+    """ Test that positional wheel is a list of given values. """
     wheels = ["thename", "thename2"]
     args = avail_wheels.create_argparser().parse_args([*wheels])
     assert isinstance(args.wheel, list)
@@ -606,15 +648,14 @@ def test_parse_args_wheels():
 
 
 def test_parse_args_wheel_noarg():
+    """ Test that positional wheel is an empty list by default. """
     args = avail_wheels.create_argparser().parse_args([])
     assert isinstance(args.wheel, list)
     assert args.wheel == []
 
 
 def test_parse_args_requirement_noarg():
-    """
-    Test no value for the option.
-    """
+    """ Test that --requirements raises when no value is given. """
     temp_stdout = StringIO()
     with redirect_stderr(temp_stdout):
         with pytest.raises(SystemExit):
@@ -634,7 +675,7 @@ def test_parse_args_requirement_file():
 
 def test_parse_args_requirement_files():
     """
-    Test multiple requirement files.
+    Test that --requirement is a list of given values..
     """
     args = avail_wheels.create_argparser().parse_args(["--requirement", "requirement.txt", "reqs.txt"])
 
@@ -643,14 +684,13 @@ def test_parse_args_requirement_files():
 
 
 def test_is_compatible_true():
+    """ Test that wheel is compatible. """
     wheel = avail_wheels.Wheel.parse_wheel_filename("netCDF4-1.3.1-cp27-cp27mu-linux_x86_64.whl")
     assert avail_wheels.is_compatible(wheel, ["2.7"])
 
 
 def test_is_compatible_compressed_tags_true():
-    """
-    Test that compressed tags set are supported.
-    """
+    """ Test that compressed tags set are supported. """
     wheel = avail_wheels.Wheel.parse_wheel_filename("shiboken2-5.15.0-5.15.0-cp35.cp36.cp37.cp38-abi3-linux_x86_64.whl")
     assert avail_wheels.is_compatible(wheel, ["3.8"])
 
@@ -659,11 +699,13 @@ def test_is_compatible_compressed_tags_true():
 
 
 def test_is_compatible_false():
+    """ Test that wheel is not compatible for a given python. """
     wheel = avail_wheels.Wheel.parse_wheel_filename("netCDF4-1.3.1-cp27-cp27mu-linux_x86_64.whl")
     assert not avail_wheels.is_compatible(wheel, ["3.5"])
 
 
 def test_is_compatible_many():
+    """ Test that wheel is compatible for many given python. """
     # TODO: add cvmfs test
     # TODO: monkeypatch
     wheel = avail_wheels.Wheel.parse_wheel_filename("netCDF4-1.3.1-cp27-cp27mu-linux_x86_64.whl")
@@ -671,7 +713,7 @@ def test_is_compatible_many():
 
 
 def test_match_file_sensitive_true():
-    """Match file name case sensitevely."""
+    """ Test that match file name case sensitevely."""
     assert avail_wheels.match_file(
         "netCDF4-1.3.1-cp27-cp27mu-linux_x86_64.whl",
         avail_wheels.get_rexes(["netCDF4"]),
@@ -679,7 +721,7 @@ def test_match_file_sensitive_true():
 
 
 def test_match_file_insensitive_true():
-    """Match file name case insensitevely."""
+    """Test that match file name case insensitevely."""
     assert avail_wheels.match_file(
         "netCDF4-1.3.1-cp27-cp27mu-linux_x86_64.whl",
         avail_wheels.get_rexes(["netcdf4"]),
@@ -691,13 +733,14 @@ def test_match_file_insensitive_true():
 
 
 def test_match_file_false():
-    """Do not match file name case sensitevely and insensitevely."""
+    """Test that do not match file name case sensitevely and insensitevely."""
     assert not avail_wheels.match_file("None", avail_wheels.get_rexes(["netcdf4"]))
 
 # TODO : add test match file false default
 
 
 def test_get_rexes():
+    """ Test that rexes are compiled for given patterns. """
     rexes = [
         re.compile(translate(pattern), re.IGNORECASE)
         for pattern in ["numpy-*.whl", "Nump*-*.whl"]
