@@ -917,3 +917,11 @@ def test_make_requirement_invalid():
 
     with pytest.raises(Exception):
         avail_wheels.make_requirement("*")
+
+
+def test_make_eq_specifier():
+    """ Test that SpecifierSet is valid. """
+    assert avail_wheels.make_eq_specifier("*") == packaging.specifiers.SpecifierSet("==*")
+    assert avail_wheels.make_eq_specifier("1.2") == packaging.specifiers.SpecifierSet("==1.2")
+    assert avail_wheels.make_eq_specifier("1.2*") == packaging.specifiers.SpecifierSet("==1.2*")
+    assert avail_wheels.make_eq_specifier("1.2.*") == packaging.specifiers.SpecifierSet("==1.2.*")
