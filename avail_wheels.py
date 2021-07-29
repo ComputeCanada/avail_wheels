@@ -14,7 +14,6 @@ import wild_requirements as requirements
 from runtime_env import RuntimeEnvironment
 from collections import defaultdict
 from itertools import chain
-from dataclasses import dataclass
 
 
 __version__ = "1.2.0"
@@ -39,7 +38,6 @@ warnings.formatwarning = __warning_on_one_line
 WHEEL_RE = re.compile(r"(?P<name>.+?)-(?P<version>.+?)(-(?P<build>\d[^-]*))?-(?P<tags>.+?-.+?-.+?)\.whl")
 
 
-@dataclass
 class Wheel():
     """
     The representation of a wheel and its tags.
@@ -56,12 +54,13 @@ class Wheel():
     Wheel(filename='numpy-1.20.1-cp38-cp38-linux_x86_64.whl', arch="", name='numpy', version=<Version('1.20.1')>, build=(), tags=frozenset({<cp38-cp38-linux_x86_64 @ 140549067913536>}))
     """
 
-    filename: str = ""
-    arch: str = ""
-    name: str = ""
-    version: str = ""
-    build: str = ""
-    tags: frozenset = None
+    def __init__(self, filename="", arch="", name="", version="", build="", tags={}):
+        self._filename = filename
+        self._arch = arch
+        self._name = name
+        self._version = version
+        self._build = build
+        self._tags = tags
 
     @staticmethod
     def parse_wheel_filename(filename, arch=""):
@@ -91,19 +90,55 @@ class Wheel():
             return Wheel(filename=filename, arch=arch)
 
     def loose_version(self):
-        return version.parse(self.version)
+        return version.parse(self._version)
+
+    @property
+    def filename(self):
+        return self._filename
+
+    @property
+    def arch(self):
+        return self._arch
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def version(self):
+        return self._version
+
+    @property
+    def build(self):
+        return self._build
+
+    @property
+    def tags(self):
+        return self._tags
 
     @property
     def python(self):
-        return ",".join(sorted(set(tag.interpreter for tag in self.tags)))
+        return ",".join(sorted(set(tag.interpreter for tag in self._tags)))
 
     @property
     def abi(self):
-        return ",".join(sorted(set(tag.abi for tag in self.tags)))
+        return ",".join(sorted(set(tag.abi for tag in self._tags)))
 
     @property
     def platform(self):
-        return ",".join(sorted(set(tag.platform for tag in self.tags)))
+        return ",".join(sorted(set(tag.platform for tag in self._tags)))
+
+    def __str__(self):
+        return self._filename
+
+    def __repr__(self):
+        return "Wheel({})".format(", ".join(f"{k[1:]}={v!r}" for k, v in self.__dict__.items()))
+
+    def __eq__(self, other):
+        if not isinstance(other, Wheel):
+            return NotImplemented
+
+        return self.__dict__ == other.__dict__
 
 
 def is_compatible(wheel, pythons):
