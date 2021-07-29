@@ -9,7 +9,7 @@ import operator
 import warnings
 import configparser
 from tabulate import tabulate
-from packaging import version, specifiers, tags
+import packaging
 import wild_requirements as requirements
 from runtime_env import RuntimeEnvironment
 from collections import defaultdict
@@ -83,14 +83,14 @@ class Wheel():
                 name=m.group('name'),
                 version=m.group('version'),
                 build=m.group('build') or "",  # Build is optional
-                tags=tags.parse_tag(m.group('tags')),
+                tags=packaging.tags.parse_tag(m.group('tags')),
             )
         else:
             warnings.warn(f"Could not get tags for : {filename}")
             return Wheel(filename=filename, arch=arch)
 
     def loose_version(self):
-        return version.parse(self._version)
+        return packaging.version.parse(self._version)
 
     @property
     def filename(self):
@@ -237,7 +237,7 @@ def sort(wheels, columns, condense=False):
         """
         Everything and nothing can be a version, loosely!
         """
-        return version.parse(x)
+        return packaging.version.parse(x)
 
     ret = []
     sep = ", "
@@ -345,7 +345,7 @@ def make_eq_specifier(v):
     """
     """
     try:
-        return specifiers.SpecifierSet(f"=={v}")
+        return packaging.specifiers.SpecifierSet(f"=={v}")
     except ValueError:
         raise argparse.ArgumentTypeError(f"Invalid version: {v!r}.")
 
