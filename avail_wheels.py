@@ -106,7 +106,7 @@ class Wheel():
 
     @property
     def version(self):
-        return self._version
+        return self.loose_version().public
 
     @property
     def build(self):

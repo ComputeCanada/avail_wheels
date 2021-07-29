@@ -107,7 +107,7 @@ def test_wheel_ctor_kwargs():
     assert wheel.filename == "file"
     assert wheel.arch == "avx"
     assert wheel.name == "torch_cpu"
-    assert wheel.version == "1.2.0+computecanada"
+    assert wheel.version == "1.2.0"
     assert wheel.build == ""
     assert wheel.tags == tags
     assert wheel.python == "cp36"
@@ -139,7 +139,7 @@ def test_wheel_parse_tags():
         filenames[1][1]: {
             "arch": "avx",
             "name": "tensorflow_cpu",
-            "version": "1.6.0+computecanada",
+            "version": "1.6.0",
             "build": "",
             "python": "cp36",
             "abi": "cp36m",
@@ -297,7 +297,7 @@ def test_sort_columns(to_be_sorted_wheels):
         ["pydicom", "1.1.0", "1", "py2,py3", "generic"],
         ["pydicom", "0.9.9", "", "py3", "generic"],
         ["torch_cpu", "0.4.0", "", "cp36", "avx2"],
-        ["torch_cpu", "0.2.0+d8f3c60", "", "cp27", "avx2"],
+        ["torch_cpu", "0.2.0", "", "cp27", "avx2"],
     ]
 
 
@@ -307,7 +307,7 @@ def test_sort_condense(to_be_sorted_wheels):
         ["botocore", "1.10.63, 1.10.57, 1.9.11, 1.9.5", "", "py2,py3", "generic"],
         ["netCDF4", "1.4.0, 1.3.1, 1.2.8", "", "cp36, cp35, cp27", "sse3, generic, avx2, avx"],
         ["pydicom", "1.1.0, 0.9.9", "1, ", "py3, py2,py3", "generic"],
-        ["torch_cpu", "0.4.0, 0.2.0+d8f3c60", "", "cp36, cp27", "avx2"],
+        ["torch_cpu", "0.4.0, 0.2.0", "", "cp36, cp27", "avx2"],
     ]
 
 
