@@ -402,7 +402,7 @@ def create_argparser():
 
     python_group = parser.add_argument_group('python')
     parser.add_mutually_exclusive_group()._group_actions.extend([
-        python_group.add_argument("-p", "--python", choices=env.available_pythons, nargs='+', default=[env.current_python[:3]] if env.current_python else env.available_pythons, help="Specify the python versions to look for."),
+        python_group.add_argument("-p", "--python", choices=env.available_pythons, nargs='+', default=[env.current_python] if env.current_python else env.available_pythons, help="Specify the python versions to look for."),
         python_group.add_argument("--all_pythons", action='store_true', help="Show all pythons of each wheel."),
         python_group.add_argument("--all-pythons", action='store_true', dest="all_pythons"),
     ])

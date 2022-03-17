@@ -73,7 +73,7 @@ class RuntimeEnvironment(object):
         Returns
         -------
         str
-            Current Python version : major.minor.micro, or None
+            Current Python version : major.minor, or None
         """
         if not self._current_python:
             # virtual env. has precedence on modules
@@ -81,6 +81,10 @@ class RuntimeEnvironment(object):
                 self._current_python = platform.python_version()
             else:
                 self._current_python = os.environ.get("EBVERSIONPYTHON", None)
+
+            # Keep major and minor parts
+            if self._current_python:
+                self._current_python = ".".join(self._current_python.split(".")[:2])
 
         return self._current_python
 

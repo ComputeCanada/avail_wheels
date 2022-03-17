@@ -59,11 +59,10 @@ def test_current_python_variable_module(monkeypatch):
     """
     Test that the current python version is read from EBVERSIONPYTHON enviroment variable.
     """
-    v = "3.8.2"
-    monkeypatch.setenv("EBVERSIONPYTHON", v)
+    monkeypatch.setenv("EBVERSIONPYTHON", "3.8.2")
     monkeypatch.delenv("VIRTUAL_ENV", raising=False)
 
-    assert RuntimeEnvironment().current_python == v
+    assert RuntimeEnvironment().current_python == "3.8"
 
 
 @venv
@@ -74,7 +73,7 @@ def test_current_python_variable_venv(monkeypatch):
     v = sys.version_info
     monkeypatch.delenv("EBVERSIONPYTHON", raising=False)
 
-    assert RuntimeEnvironment().current_python == f"{v.major}.{v.minor}.{v.micro}"
+    assert RuntimeEnvironment().current_python == f"{v.major}.{v.minor}"
 
 
 def test_python_dirs_default(monkeypatch):
