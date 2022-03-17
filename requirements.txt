@@ -1,3 +1,5 @@
 tabulate
-packaging
+
+# Hard constraint since we rely on the API
+packaging==21.3
 pip==20.3.4
