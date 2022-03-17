@@ -55,14 +55,18 @@ def test_current_python_default(monkeypatch):
     assert RuntimeEnvironment().current_python is None
 
 
-def test_current_python_variable_module(monkeypatch):
+@pytest.mark.parametrize("input,expected", [
+    ("3.8.2", "3.8"),
+    ("3.10.2", "3.10"),
+])
+def test_current_python_variable_module(monkeypatch, input, expected):
     """
     Test that the current python version is read from EBVERSIONPYTHON enviroment variable.
     """
-    monkeypatch.setenv("EBVERSIONPYTHON", "3.8.2")
+    monkeypatch.setenv("EBVERSIONPYTHON", input)
     monkeypatch.delenv("VIRTUAL_ENV", raising=False)
 
-    assert RuntimeEnvironment().current_python == "3.8"
+    assert RuntimeEnvironment().current_python == expected
 
 
 @venv
@@ -70,10 +74,12 @@ def test_current_python_variable_venv(monkeypatch):
     """
     Test that the current python version is read from VIRTUAL_ENV enviroment variable.
     """
-    v = sys.version_info
     monkeypatch.delenv("EBVERSIONPYTHON", raising=False)
+    assert RuntimeEnvironment().current_python == f"{sys.version_info.major}.{sys.version_info.minor}"
 
-    assert RuntimeEnvironment().current_python == f"{v.major}.{v.minor}"
+    # Ensure virtual env python has priority
+    monkeypatch.setenv("EBVERSIONPYTHON", "3.10.2")
+    assert RuntimeEnvironment().current_python == f"{sys.version_info.major}.{sys.version_info.minor}"
 
 
 def test_python_dirs_default(monkeypatch):
