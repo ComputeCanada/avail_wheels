@@ -4,7 +4,7 @@ import os
 from glob import glob
 import platform
 import re
-from packaging import tags
+from packaging import tags, version
 
 
 class RuntimeEnvironment(object):
@@ -157,8 +157,9 @@ class RuntimeEnvironment(object):
                     for python_version in os.listdir(python_directory):
                         if re.match(r"\d+.\d+(.\d+)?", python_version):
                             # Slice `3.8.0` to `3.8` (major.minor)
-                            versions.add(python_version[:3])
-            self._available_pythons = sorted(versions)
+                            versions.add('.'.join(python_version.split('.')[:2]))
+            # naturally sort versions
+            self._available_pythons = sorted(versions, key=version.parse)
 
         return self._available_pythons
 
