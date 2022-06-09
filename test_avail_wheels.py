@@ -754,12 +754,25 @@ def test_match_file_false():
 
 
 def test_get_rexes():
-    """ Test that rexes are compiled for given patterns. """
+    """
+    Test that rexes are compiled for given patterns.
+
+    The fnmatch.translate implementation has changed in Python 3.9.
+    The group created from a star is unique and this results in a false equality when you compare two identical patterns.
+    https://github.com/python/cpython/blob/e8f2fe355b82a3eb3c64ee6e1c44f31c020cf97d/Lib/fnmatch.py#L159
+
+    E         - [re.compile('(?s:Nump(?=(?P<g1>.*?\\-))(?P=g1).*\\.whl)\\Z', re.IGNORECASE)]
+    E         ?                              ^              ^
+    E         + [re.compile('(?s:Nump(?=(?P<g0>.*?\\-))(?P=g0).*\\.whl)\\Z', re.IGNORECASE)]
+
+    Hence we can't test for Nump*-*.whl patterns
+    """
+
     rexes = [
         re.compile(translate(pattern), re.IGNORECASE)
-        for pattern in ["numpy-*.whl", "Nump*-*.whl"]
+        for pattern in ["numpy-*.whl", "Scikit-learn-*.whl"]
     ]
-    assert avail_wheels.get_rexes(["numpy", "Nump*"]) == rexes
+    assert avail_wheels.get_rexes(["numpy", "Scikit-learn"]) == rexes
 
 
 def test_add_not_available_wheels_empty():
