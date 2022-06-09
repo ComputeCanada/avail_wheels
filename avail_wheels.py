@@ -300,7 +300,7 @@ def get_search_paths():
         return [os.path.join(root, d) for root, dirs, _ in os.walk(env.wheelhouse) if root[len(env.wheelhouse):].count(os.sep) == 1 for d in dirs]
 
     cfg = configparser.ConfigParser()
-    cfg.read(env.pip_config_file)
+    cfg.read_file(open(env.pip_config_file))
     return cfg['wheel']['find-links'].split(' ')
 
 
