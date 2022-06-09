@@ -158,20 +158,23 @@ def test_available_pythons_cvmfs(monkeypatch):
     assert RuntimeEnvironment().available_pythons == ["2.7", "3.5", "3.6", "3.7", "3.8", "3.9", "3.10"]
 
 
-def test_compatible_tags():
+@pytest.mark.parametrize("python,tag", [
+    ("3.8", "38"),
+    ("3.10", "310"),
+])
+def test_compatible_tags(python, tag):
     """
-    Test the python 3.8 compatible tags.
+    Test the python 3.8 and 3.10 compatible tags.
     """
-    python = "3.8"
     platform = list(tags._generic_platforms())[0]
     other = frozenset(
         [
-            tags.Tag("cp38", "cp38", platform),
-            tags.Tag("cp38", "abi3", platform),
-            tags.Tag("cp38", "none", platform),
-            tags.Tag("py38", "none", platform),
+            tags.Tag(f"cp{tag}", f"cp{tag}", platform),
+            tags.Tag(f"cp{tag}", "abi3", platform),
+            tags.Tag(f"cp{tag}", "none", platform),
+            tags.Tag(f"py{tag}", "none", platform),
             tags.Tag("py3", "none", platform),
-            tags.Tag("py38", "none", "any"),
+            tags.Tag(f"py{tag}", "none", "any"),
             tags.Tag("py3", "none", "any"),
         ]
     )

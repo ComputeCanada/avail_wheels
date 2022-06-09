@@ -194,13 +194,13 @@ class RuntimeEnvironment(object):
             self._compatible_tags = {
                 ap: frozenset(
                     filter(
-                        lambda x: x.interpreter in (f"py{ap[0]}", f"py{ap[0]}{ap[2]}", f"cp{ap[0]}{ap[2]}"),
+                        lambda x: x.interpreter in (f"py{ap[0]}", f"py{ap[0]}{ap[2:]}", f"cp{ap[0]}{ap[2:]}"),
                         [
                             *tags.compatible_tags(
-                                python_version=(int(ap[0]), int(ap[2])), platforms=tags._generic_platforms()
+                                python_version=(int(ap[0]), int(ap[2:])), platforms=tags._generic_platforms()
                             ),
                             *tags.cpython_tags(
-                                python_version=(int(ap[0]), int(ap[2])), platforms=tags._generic_platforms()
+                                python_version=(int(ap[0]), int(ap[2:])), platforms=tags._generic_platforms()
                             ),
                         ],
                     )
