@@ -8,7 +8,7 @@ import fnmatch
 import operator
 import warnings
 import configparser
-from tabulate import tabulate
+from tabulate import tabulate, tabulate_formats
 import packaging
 import wild_requirements as requirements
 from runtime_env import RuntimeEnvironment
@@ -422,6 +422,7 @@ def create_argparser():
 
     display_group = parser.add_argument_group('display')
     display_group.add_argument("--mediawiki", action='store_true', help="Print a mediawiki table."),
+    display_group.add_argument("--format", choices=tabulate_formats, default='simple', help="Print table according to given format."),
     display_group.add_argument("--raw", action='store_true', help="Print raw files names. Has precedence over other arguments of this group."),
     display_group.add_argument("--column", choices=AVAILABLE_HEADERS, nargs='+', default=HEADERS, help="Specify and order the columns to display."),
     display_group.add_argument("--condense", action='store_true', help="Condense wheel information into one line.")
@@ -456,7 +457,7 @@ def main():
                 print(*wheel_list, sep='\n')
         else:
             wheels = sort(wheels, args.column, args.condense)
-            print(tabulate(wheels, headers=args.column, tablefmt="mediawiki" if args.mediawiki else "simple"))
+            print(tabulate(wheels, headers=args.column, tablefmt="mediawiki" if args.mediawiki else args.format))
     except BrokenPipeError:
         # Python flushes standard streams on exit; redirect remaining output
         # to devnull to avoid another BrokenPipeError at shutdown
