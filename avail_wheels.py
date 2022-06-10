@@ -376,17 +376,20 @@ def create_argparser():
 
     description = "List currently available wheels patterns from the wheelhouse. By default, it will:"
     description += "\n    - only show you the latest version of a specific package (unless versions are given);"
-    description += "\n    - only show you versions that are compatible with the python module (if one loaded), otherwise all python versions will be shown;"
+    description += "\n    - only show you versions that are compatible with the python module (if one loaded) or virtual environment (if activated), otherwise all python versions will be shown;"
     description += "\n    - only show you versions that are compatible with the CPU architecture that you are currently running on."
 
     epilog = "Examples:\n"
-    epilog += "    avail_wheels \"*cdf*\"\n"
-    epilog += "    avail_wheels numpy --version \"1.15*\"\n"
-    epilog += "    avail_wheels numpy --all_versions\n"
-    epilog += "    avail_wheels 'numpy==1.15.*' torch_cpu\n"
-    epilog += "    avail_wheels numpy --python 2.7 3.6\n"
-    epilog += "    avail_wheels -r requirements.txt\n"
-    epilog += "    avail_wheels 'dgl-cpu<0.6.0' -r requirements.txt\n"
+    epilog += "\n".join([
+        "    avail_wheels \"*cdf*\"",
+        "    avail_wheels numpy -v \"1.21.*\"",
+        "    avail_wheels numpy --all_versions",
+        "    avail_wheels.py numpy==1.21",
+        "    avail_wheels.py numpy>=1.21.*",
+        "    avail_wheels numpy --python 3.8 3.10",
+        "    avail_wheels -r requirements.txt",
+        "    avail_wheels 'dgl-cpu<0.6.0' -r requirements.txt",
+    ])
     epilog += "\nFor more information, see: https://docs.computecanada.ca/wiki/Python#Listing_available_wheels"
 
     parser = argparse.ArgumentParser(prog="avail_wheels",
