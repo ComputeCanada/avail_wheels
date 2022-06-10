@@ -182,26 +182,32 @@ def get_wheels(paths, reqs, pythons, latest):
     Can also be filterd on arch, name, version or python.
     Return a dict of wheel name and list of tags.
     """
+    def _get_wheels_from_fs(paths):
+        """
+        Get wheels from the wheelhouse paths.
+        """
+        for path in paths:
+            arch = os.path.basename(path)
+            for _, _, files in os.walk(f"{path}"):
+                for file in files:
+                    yield arch, file
+
     wheels = defaultdict(list)
 
     if reqs:
         rexes = get_rexes(reqs)
-        for path in paths:
-            arch = os.path.basename(path)
-            for _, _, files in os.walk(f"{path}"):
-                for file in files:
-                    if match_file(file, rexes):
-                        wheel = Wheel.parse_wheel_filename(file, arch)
-                        if match_version(wheel, reqs) and is_compatible(wheel, pythons):
-                            wheels[wheel.name].append(wheel)
+        for arch, file in _get_wheels_from_fs(paths):
+            if match_file(file, rexes):
+                wheel = Wheel.parse_wheel_filename(file, arch)
+                if match_version(wheel, reqs) and is_compatible(wheel, pythons):
+                    wheels[wheel.name].append(wheel)
+
+    # Display all available wheels that are compatible (no reqs were given)
     else:
-        for path in paths:
-            arch = os.path.basename(path)
-            for _, _, files in os.walk(f"{path}"):
-                for file in files:
-                    wheel = Wheel.parse_wheel_filename(file, arch)
-                    if is_compatible(wheel, pythons):
-                        wheels[wheel.name].append(wheel)
+        for arch, file in _get_wheels_from_fs(paths):
+            wheel = Wheel.parse_wheel_filename(file, arch)
+            if is_compatible(wheel, pythons):
+                wheels[wheel.name].append(wheel)
 
     # Filter versions
     return latest_versions(wheels) if latest else wheels
