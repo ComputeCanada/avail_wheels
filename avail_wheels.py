@@ -20,7 +20,7 @@ __version__ = "1.2.0"
 
 env = RuntimeEnvironment()
 
-AVAILABLE_HEADERS = ['name', 'version', 'build', 'python', 'abi', 'platform', 'arch']
+AVAILABLE_HEADERS = ['name', 'version', 'localversion', 'build', 'python', 'abi', 'platform', 'arch']
 HEADERS = ['name', 'version', 'build', 'python', 'arch']
 
 DEFAULT_STAR_ARG = ['*']
@@ -107,6 +107,10 @@ class Wheel():
     @property
     def version(self):
         return self.loose_version().public
+
+    @property
+    def localversion(self):
+        return self.loose_version().local
 
     @property
     def build(self):

@@ -131,6 +131,7 @@ def test_wheel_parse_tags():
             "arch": "avx2",
             "name": "netCDF4",
             "version": "1.3.1",
+            "localversion": None,
             "build": "",
             "python": "cp36",
             "abi": "cp36m",
@@ -140,6 +141,7 @@ def test_wheel_parse_tags():
             "arch": "avx",
             "name": "tensorflow_cpu",
             "version": "1.6.0",
+            "localversion": "computecanada",
             "build": "",
             "python": "cp36",
             "abi": "cp36m",
@@ -149,6 +151,7 @@ def test_wheel_parse_tags():
             "arch": "generic",
             "name": "backports.functools_lru_cache",
             "version": "1.4",
+            "localversion": None,
             "build": "",
             "python": "py2,py3",
             "abi": "none",
@@ -158,6 +161,7 @@ def test_wheel_parse_tags():
             "arch": "sse3",
             "name": "Shapely",
             "version": "1.6.2.post1",
+            "localversion": None,
             "build": "",
             "python": "cp35",
             "abi": "cp35m",
@@ -167,6 +171,7 @@ def test_wheel_parse_tags():
             "arch": "generic",
             "name": "shiboken2",
             "version": "5.15.0",
+            "localversion": None,
             "build": "5.15.0",
             "python": "cp35,cp36,cp37,cp38",
             "abi": "abi3",
@@ -180,6 +185,7 @@ def test_wheel_parse_tags():
         assert wheel.arch == tags[file]["arch"]
         assert wheel.name == tags[file]["name"]
         assert wheel.version == tags[file]["version"]
+        assert wheel.localversion == tags[file]["localversion"]
         assert wheel.build == tags[file]["build"]
         assert wheel.python == tags[file]["python"]
         assert wheel.abi == tags[file]["abi"]
