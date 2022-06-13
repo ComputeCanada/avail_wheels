@@ -805,6 +805,22 @@ def test_add_not_available_wheels():
     }
 
 
+def test_add_not_available_wheels_only():
+    """Test that wheels patterns not available are only present."""
+    wheels = defaultdict(
+        list,
+        {
+            "numpy": [avail_wheels.Wheel(filename="numpy", name="numpy")],
+        },
+    )
+    ret = avail_wheels.add_not_available_wheels(wheels, ["potato", "patata", "numpy"], True)
+
+    assert ret == {
+        "potato": [avail_wheels.Wheel(filename="potato", name="potato")],
+        "patata": [avail_wheels.Wheel(filename="patata", name="patata")],
+    }
+
+
 def test_filter_search_paths_all_search_paths():
     """
     Test that without any filter values all search paths are returned.

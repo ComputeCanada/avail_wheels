@@ -278,14 +278,18 @@ def sort(wheels, columns, condense=False):
     return ret
 
 
-def add_not_available_wheels(wheels, reqs):
+def add_not_available_wheels(wheels, reqs, not_available_only=False):
     """ Add the wheels names given from the user that were not found. """
+
+    # Return the wheel set, or an empty set where wheels not available were added.
+    ret = wheels if not not_available_only else defaultdict(list)
+
     for wheel in reqs:
         # Do not duplicate and add names that translate to an already present name.
         if wheel not in wheels and all(not re.match(fnmatch.translate(wheel), w) for w in wheels.keys()):
-            wheels[wheel].append(Wheel(filename=wheel, name=wheel))
+            ret[wheel].append(Wheel(filename=wheel, name=wheel))
 
-    return wheels
+    return ret
 
 
 def filter_search_paths(search_paths, arch_values):
@@ -430,6 +434,7 @@ def create_argparser():
     display_group.add_argument("--column", choices=AVAILABLE_HEADERS, nargs='+', default=HEADERS, help="Specify and order the columns to display."),
     display_group.add_argument("--condense", action='store_true', help="Condense wheel information into one line.")
     display_group.add_argument("--not-available", action='store_true', help="Also display wheels that were not available.")
+    display_group.add_argument("--not-available-only", action='store_true', help="Display only wheels that were not available.")
 
     return parser
 
@@ -449,8 +454,8 @@ def main():
 
     wheels = get_wheels(search_paths, reqs, pythons, latest)
 
-    if args.not_available:
-        wheels = add_not_available_wheels(wheels, reqs)
+    if args.not_available or args.not_available_only:
+        wheels = add_not_available_wheels(wheels, reqs, args.not_available_only)
 
     # Handle SIGPIP emitted by piping to utils like head.
     # https://docs.python.org/3/library/signal.html#note-on-sigpipe
