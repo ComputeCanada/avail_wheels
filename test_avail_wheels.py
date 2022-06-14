@@ -11,6 +11,7 @@ from collections import defaultdict
 import packaging
 from wild_requirements import Requirement
 import pytest
+from pytest_unordered import unordered
 
 TEST_STACKS = ["generic", "nix", "gentoo"]
 TEST_ARCHS = ["avx2", "generic"]
@@ -322,7 +323,7 @@ def test_get_wheels_all_archs_all_pythons(wheelhouse):
     """ Test that get wheels returns wheels for all arch and all pythons. """
     search_paths = [f"{str(wheelhouse)}/gentoo/{arch}" for arch in TEST_ARCHS]
     other = {
-        "scipy": [
+        "scipy": unordered([
             avail_wheels.Wheel.parse_wheel_filename("scipy-1.7.0-cp37-cp37m-linux_x86_64.whl", "generic"),
             avail_wheels.Wheel.parse_wheel_filename("scipy-1.7.0-cp36-cp36m-linux_x86_64.whl", "generic"),
             avail_wheels.Wheel.parse_wheel_filename("scipy-1.7.0-cp35-cp35m-linux_x86_64.whl", "generic"),
@@ -330,12 +331,12 @@ def test_get_wheels_all_archs_all_pythons(wheelhouse):
             avail_wheels.Wheel.parse_wheel_filename("scipy-1.1.0-cp36-cp36m-linux_x86_64.whl", "generic"),
             avail_wheels.Wheel.parse_wheel_filename("scipy-1.1.0-cp35-cp35m-linux_x86_64.whl", "generic"),
             avail_wheels.Wheel.parse_wheel_filename("scipy-1.1.0-cp27-cp27mu-linux_x86_64.whl", "generic"),
-        ],
-        "tensorflow_gpu": [
+        ]),
+        "tensorflow_gpu": unordered([
             avail_wheels.Wheel.parse_wheel_filename("tensorflow_gpu-1.8.0+computecanada-cp36-cp36m-linux_x86_64.whl", "avx2"),
             avail_wheels.Wheel.parse_wheel_filename("tensorflow_gpu-1.8.0+computecanada-cp35-cp35m-linux_x86_64.whl", "avx2"),
             avail_wheels.Wheel.parse_wheel_filename("tensorflow_gpu-1.8.0+computecanada-cp27-cp27mu-linux_x86_64.whl", "avx2"),
-        ],
+        ]),
     }
 
     ret = avail_wheels.get_wheels(
@@ -352,7 +353,7 @@ def test_get_wheels_arch_all_pythons(wheelhouse):
     arch = "generic"
     search_paths = [f"{str(wheelhouse)}/gentoo/{arch}"]
     other = {
-        "scipy": [
+        "scipy": unordered([
             avail_wheels.Wheel.parse_wheel_filename("scipy-1.7.0-cp37-cp37m-linux_x86_64.whl", arch),
             avail_wheels.Wheel.parse_wheel_filename("scipy-1.7.0-cp36-cp36m-linux_x86_64.whl", arch),
             avail_wheels.Wheel.parse_wheel_filename("scipy-1.7.0-cp35-cp35m-linux_x86_64.whl", arch),
@@ -360,7 +361,7 @@ def test_get_wheels_arch_all_pythons(wheelhouse):
             avail_wheels.Wheel.parse_wheel_filename("scipy-1.1.0-cp36-cp36m-linux_x86_64.whl", arch),
             avail_wheels.Wheel.parse_wheel_filename("scipy-1.1.0-cp35-cp35m-linux_x86_64.whl", arch),
             avail_wheels.Wheel.parse_wheel_filename("scipy-1.1.0-cp27-cp27mu-linux_x86_64.whl", arch),
-        ]
+        ])
     }
 
     ret = avail_wheels.get_wheels(
