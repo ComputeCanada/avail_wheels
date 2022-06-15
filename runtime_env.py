@@ -2,7 +2,7 @@
 
 import os
 from glob import glob
-import platform
+from subprocess import run
 import re
 from packaging import tags, version
 
@@ -78,7 +78,8 @@ class RuntimeEnvironment(object):
         if not self._current_python:
             # virtual env. has precedence on modules
             if 'VIRTUAL_ENV' in os.environ:
-                self._current_python = platform.python_version()
+                # Check the activated virtual env, returns `Python 3.9.3` but keep only the version part
+                self._current_python = run("python -V", shell=True, capture_output=True).stdout.decode().split()[1]
             else:
                 self._current_python = os.environ.get("EBVERSIONPYTHON", None)
 

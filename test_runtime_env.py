@@ -1,4 +1,3 @@
-import sys
 from runtime_env import RuntimeEnvironment
 from packaging import tags
 import os
@@ -73,13 +72,14 @@ def test_current_python_variable_module(monkeypatch, input, expected):
 def test_current_python_variable_venv(monkeypatch):
     """
     Test that the current python version is read from VIRTUAL_ENV enviroment variable.
+    A python 3.9 virtual env is expected to exists.
     """
     monkeypatch.delenv("EBVERSIONPYTHON", raising=False)
-    assert RuntimeEnvironment().current_python == f"{sys.version_info.major}.{sys.version_info.minor}"
+    assert RuntimeEnvironment().current_python == "3.9"
 
     # Ensure virtual env python has priority
     monkeypatch.setenv("EBVERSIONPYTHON", "3.10.2")
-    assert RuntimeEnvironment().current_python == f"{sys.version_info.major}.{sys.version_info.minor}"
+    assert RuntimeEnvironment().current_python == "3.9"
 
 
 def test_python_dirs_default(monkeypatch):

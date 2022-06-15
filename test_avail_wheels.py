@@ -3,7 +3,6 @@ from argparse import ArgumentError
 from contextlib import redirect_stderr
 from fnmatch import translate
 import re
-import sys
 import os
 import avail_wheels
 from runtime_env import RuntimeEnvironment
@@ -491,12 +490,14 @@ def test_parse_args_default_noarch(monkeypatch):
 
 @venv
 def test_parse_args_default_python_venv(monkeypatch):
-    """ Test that default argument parser value for --python is provided by VIRTUAL_ENV. """
+    """
+    Test that default argument parser value for --python is provided by VIRTUAL_ENV.
+    Expects a python 3.9 virtual environment activated.
+    """
     monkeypatch.delenv("EBVERSIONPYTHON", raising=False)
 
-    v = sys.version_info  # venv interpreter version
     avail_wheels.env = RuntimeEnvironment()
-    assert avail_wheels.create_argparser().get_default("python") == [f"{v.major}.{v.minor}"]
+    assert avail_wheels.create_argparser().get_default("python") == ["3.9"]
 
 
 def test_parse_args_default_python_module(monkeypatch):
