@@ -21,7 +21,7 @@ __version__ = "1.2.0"
 env = RuntimeEnvironment()
 
 AVAILABLE_HEADERS = ['name', 'version', 'localversion', 'build', 'python', 'abi', 'platform', 'arch']
-HEADERS = ['name', 'version', 'build', 'python', 'arch']
+HEADERS = ['name', 'version', 'python', 'arch']
 
 DEFAULT_STAR_ARG = ['*']
 

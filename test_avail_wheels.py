@@ -285,7 +285,7 @@ def test_sort_columns(to_be_sorted_wheels):
 
     # TODO: Break down the sort tests into columns tests
     # TODO: Add test with a build
-    assert avail_wheels.sort(to_be_sorted_wheels, avail_wheels.HEADERS) == [
+    assert avail_wheels.sort(to_be_sorted_wheels, ['name', 'version', 'build', 'python', 'arch']) == [
         ["botocore", "1.10.63", "", "py2,py3", "generic"],
         ["botocore", "1.10.57", "", "py2,py3", "generic"],
         ["botocore", "1.9.11", "", "py2,py3", "generic"],
@@ -310,7 +310,7 @@ def test_sort_columns(to_be_sorted_wheels):
 
 def test_sort_condense(to_be_sorted_wheels):
     """ Test that sort return condensed information on one line. """
-    assert avail_wheels.sort(to_be_sorted_wheels, avail_wheels.HEADERS, True) == [
+    assert avail_wheels.sort(to_be_sorted_wheels, ['name', 'version', 'build', 'python', 'arch'], True) == [
         ["botocore", "1.10.63, 1.10.57, 1.9.11, 1.9.5", "", "py2,py3", "generic"],
         ["netCDF4", "1.4.0, 1.3.1, 1.2.8", "", "cp36, cp35, cp27", "sse3, generic, avx2, avx"],
         ["pydicom", "1.1.0, 0.9.9", "1, ", "py3, py2,py3", "generic"],
