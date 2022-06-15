@@ -16,7 +16,7 @@ from collections import defaultdict
 from itertools import chain
 
 
-__version__ = "2.0.0-rc1"
+__version__ = "2.0.0-rc2"
 
 env = RuntimeEnvironment()
 
