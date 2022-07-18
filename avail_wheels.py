@@ -405,6 +405,7 @@ def create_argparser():
                                      description=description,
                                      epilog=epilog)
 
+    parser.add_argument("-V", action='version', version='%(prog)s {}'.format(__version__))
     parser.add_argument("wheel", nargs="*", type=make_requirement, help="Specify the name to look for (case insensitive).")
     parser.add_argument("-n", "--name", nargs="+", type=make_requirement, default=[], help="Specify the name to look for (case insensitive).")
     parser.add_argument("--all", action='store_true', help="Same as: --all_versions --all_pythons --all_archs")
