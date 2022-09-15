@@ -78,8 +78,8 @@ class RuntimeEnvironment(object):
         if not self._current_python:
             # virtual env. has precedence on modules
             if 'VIRTUAL_ENV' in os.environ:
-                # Check the activated virtual env, returns `Python 3.9.3` but keep only the version part
-                self._current_python = run("python -V", shell=True, capture_output=True).stdout.decode().split()[1]
+                # Check the activated virtual env
+                self._current_python = run("python -c 'import platform; print(platform.python_version())'", shell=True, capture_output=True).stdout.decode()
             else:
                 self._current_python = os.environ.get("EBVERSIONPYTHON", None)
 
