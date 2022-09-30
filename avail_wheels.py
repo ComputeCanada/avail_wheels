@@ -340,8 +340,9 @@ def get_requirements_set(args):
     if args.requirements:
         # Include here, as importing is slow!
         from pip._internal.req import req_file
+        from pip._internal.network.session import PipSession
         for fname in args.requirements:
-            for freq in req_file.parse_requirements(fname, session=None):
+            for freq in req_file.parse_requirements(fname, session=PipSession()):
                 r = requirements.Requirement(freq.requirement)
                 reqs[r.name] = r
 
