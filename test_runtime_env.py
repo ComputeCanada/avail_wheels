@@ -72,14 +72,14 @@ def test_current_python_variable_module(monkeypatch, input, expected):
 def test_current_python_variable_venv(monkeypatch):
     """
     Test that the current python version is read from VIRTUAL_ENV enviroment variable.
-    A python 3.9 virtual env is expected to exists.
+    A python 3.11 virtual env is expected to exists.
     """
     monkeypatch.delenv("EBVERSIONPYTHON", raising=False)
-    assert RuntimeEnvironment().current_python == "3.9"
+    assert RuntimeEnvironment().current_python == "3.11"
 
     # Ensure virtual env python has priority
     monkeypatch.setenv("EBVERSIONPYTHON", "3.10.2")
-    assert RuntimeEnvironment().current_python == "3.9"
+    assert RuntimeEnvironment().current_python == "3.11"
 
 
 def test_python_dirs_default(monkeypatch):
@@ -155,7 +155,7 @@ def test_available_pythons_cvmfs(monkeypatch):
     Test that the default available pythons versions are from CVMFS.
     """
     monkeypatch.delenv("PYTHON_DIRS", raising=False)
-    assert RuntimeEnvironment().available_pythons == ["2.7", "3.5", "3.6", "3.7", "3.8", "3.9", "3.10"]
+    assert RuntimeEnvironment().available_pythons == ["2.7", "3.5", "3.6", "3.7", "3.8", "3.9", "3.10", "3.11"]
 
 
 @pytest.mark.parametrize("python,tag", [

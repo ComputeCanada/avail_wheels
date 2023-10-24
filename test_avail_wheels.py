@@ -492,12 +492,12 @@ def test_parse_args_default_noarch(monkeypatch):
 def test_parse_args_default_python_venv(monkeypatch):
     """
     Test that default argument parser value for --python is provided by VIRTUAL_ENV.
-    Expects a python 3.9 virtual environment activated.
+    Expects a python 3.11 virtual environment activated.
     """
     monkeypatch.delenv("EBVERSIONPYTHON", raising=False)
 
     avail_wheels.env = RuntimeEnvironment()
-    assert avail_wheels.create_argparser().get_default("python") == ["3.9"]
+    assert avail_wheels.create_argparser().get_default("python") == ["3.11"]
 
 
 def test_parse_args_default_python_module(monkeypatch):
