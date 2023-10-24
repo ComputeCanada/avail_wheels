@@ -257,7 +257,7 @@ def sort(wheels, columns, condense=False):
     wheel_names = sorted(wheels.keys(), key=lambda s: s.casefold())
     for wheel_name in wheel_names:
         wheel_list = wheels[wheel_name]
-        wheel_list.sort(key=operator.attrgetter('python'), reverse=True)
+        wheel_list.sort(key=lambda x: loose_key(x.python), reverse=True)
         wheel_list.sort(key=operator.attrgetter('arch'), reverse=True)
         wheel_list.sort(key=operator.methodcaller('loose_version'), reverse=True)
 
