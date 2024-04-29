@@ -96,7 +96,7 @@ class RuntimeEnvironment(object):
 
         Multiple paths must be separated by `:`.
 
-        Default: /cvmfs/soft.computecanada.ca/easybuild/software/20*/Core/python:/cvmfs/soft.computecanada.ca/easybuild/software/20*/*/Core/python
+        Default: /cvmfs/soft.computecanada.ca/easybuild/software/20*/Core/python:/cvmfs/soft.computecanada.ca/easybuild/software/20*/*/Core/python:/cvmfs/soft.computecanada.ca/easybuild/software/20*/*/Compiler/gcccore/python
 
         Returns
         -------
@@ -109,6 +109,7 @@ class RuntimeEnvironment(object):
                 ":".join([
                     "/cvmfs/soft.computecanada.ca/easybuild/software/20*/Core/python",
                     "/cvmfs/soft.computecanada.ca/easybuild/software/20*/*/Core/python",
+                    "/cvmfs/soft.computecanada.ca/easybuild/software/20*/*/Compiler/gcccore/python"
                 ])
             )
 

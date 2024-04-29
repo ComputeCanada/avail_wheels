@@ -85,13 +85,14 @@ def test_current_python_variable_venv(monkeypatch):
 def test_python_dirs_default(monkeypatch):
     """
     Test that the default python directories is from
-        /cvmfs/soft.computecanada.ca/easybuild/software/20*/Core/python:/cvmfs/soft.computecanada.ca/easybuild/software/20*/*/Core/python
+        /cvmfs/soft.computecanada.ca/easybuild/software/20*/Core/python:/cvmfs/soft.computecanada.ca/easybuild/software/20*/*/Core/python:/cvmfs/soft.computecanada.ca/easybuild/software/20*/*/Compiler/gcccore/python
     """
     monkeypatch.delenv("PYTHON_DIRS", raising=False)
     assert RuntimeEnvironment().python_directories == ":".join(
         [
             "/cvmfs/soft.computecanada.ca/easybuild/software/20*/Core/python",
             "/cvmfs/soft.computecanada.ca/easybuild/software/20*/*/Core/python",
+            "/cvmfs/soft.computecanada.ca/easybuild/software/20*/*/Compiler/gcccore/python",
         ]
     )
 
