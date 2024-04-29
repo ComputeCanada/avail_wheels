@@ -105,6 +105,10 @@ class Wheel():
         return self._name
 
     @property
+    def namelower(self):
+        return self._name.lower()
+
+    @property
     def version(self):
         return self.loose_version().public
 
@@ -165,10 +169,10 @@ def match_version(wheel, reqs):
     Match an exact requirements or a wild requirements.
     When a requirements has no specifiers, it automatically match.
     """
-    if wheel.name in reqs:
-        return wheel.version in reqs[wheel.name].specifier
+    if wheel.namelower in reqs:
+        return wheel.version in reqs[wheel.namelower].specifier
     else:
-        return any(re.match(fnmatch.translate(req_name), wheel.name, re.IGNORECASE) and wheel.version in req.specifier for req_name, req in reqs.items())
+        return any(re.match(fnmatch.translate(req_name), wheel.namelower, re.IGNORECASE) and wheel.version in req.specifier for req_name, req in reqs.items())
 
 
 def get_rexes(reqs):
@@ -204,14 +208,14 @@ def get_wheels(paths, reqs, pythons, latest):
             if match_file(file, rexes):
                 wheel = Wheel.parse_wheel_filename(file, arch)
                 if match_version(wheel, reqs) and is_compatible(wheel, pythons):
-                    wheels[wheel.name].append(wheel)
+                    wheels[wheel.namelower].append(wheel)
 
     # Display all available wheels that are compatible (no reqs were given)
     else:
         for arch, file in _get_wheels_from_fs(paths):
             wheel = Wheel.parse_wheel_filename(file, arch)
             if is_compatible(wheel, pythons):
-                wheels[wheel.name].append(wheel)
+                wheels[wheel.namelower].append(wheel)
 
     # Filter versions
     return latest_versions(wheels) if latest else wheels
