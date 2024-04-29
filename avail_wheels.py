@@ -369,7 +369,12 @@ def make_requirement(r):
     """
     """
     try:
-        return requirements.Requirement(r)
+        # Partition requirement on '+'.
+        # This is useful for requirements like jaxlib==0.4.20+cuda12.cudnn89.computecanada which contains name, version and local version.
+        # We want to keep the name and version part (jaxlib==0.4.20) and drop the local version (+).
+
+        # When `+` is not found, it returns the whole string.
+        return requirements.Requirement(r.partition('+')[0])
     except ValueError:
         raise argparse.ArgumentTypeError(f"Invalid requirement: {r!r}.")
 

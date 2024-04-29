@@ -956,6 +956,13 @@ def test_make_requirement_invalid():
         avail_wheels.make_requirement("*")
 
 
+def test_make_requirement_localversion():
+    """ Test that named requirement is valid and its local version is stripped. """
+    assert avail_wheels.make_requirement("name") == Requirement("name")
+    assert avail_wheels.make_requirement("name+local") == Requirement("name")
+    assert avail_wheels.make_requirement("name+a.b.c") == Requirement("name")
+
+
 def test_make_eq_specifier():
     """ Test that SpecifierSet is valid. """
     assert avail_wheels.make_eq_specifier("*") == packaging.specifiers.SpecifierSet("==*")
