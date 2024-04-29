@@ -125,10 +125,27 @@ def test_current_architecture_variable(monkeypatch):
 def test_available_architectures(monkeypatch):
     """
     Test that the default available_architectures is a frozenset(['avx', 'avx2', 'avx512', 'generic', 'sse3'])
+    prior to 2023, and a frozenset(['x86-64-v3', 'x86-64-v4', 'generic']) for 2023 forward.
     """
+    # An environment variable EBVERSIONGENTOO is used to determine the available architectures
+    # and exists under 2020 and 2023, but not under 2020
+
+    monkeypatch.delenv("EBVERSIONGENTOO", raising=False)  # prior to 2020
     assert isinstance(RuntimeEnvironment().available_architectures, frozenset)
     assert RuntimeEnvironment().available_architectures == frozenset(
         ["avx", "avx2", "avx512", "generic", "sse3"]
+    )
+
+    monkeypatch.setenv("EBVERSIONGENTOO", "2020")
+    assert isinstance(RuntimeEnvironment().available_architectures, frozenset)
+    assert RuntimeEnvironment().available_architectures == frozenset(
+        ["avx", "avx2", "avx512", "generic", "sse3"]
+    )
+
+    monkeypatch.setenv("EBVERSIONGENTOO", "2023")
+    assert isinstance(RuntimeEnvironment().available_architectures, frozenset)
+    assert RuntimeEnvironment().available_architectures == frozenset(
+        ["x86-64-v3", "x86-64-v4", "generic"]
     )
 
 

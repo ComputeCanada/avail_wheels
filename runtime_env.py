@@ -23,7 +23,9 @@ class RuntimeEnvironment(object):
     _pip_config_file = None
     _python_dirs = None
     _current_architecture = None
-    _available_architectures = frozenset(["avx", "avx2", "avx512", "generic", "sse3"])
+    _available_architectures = None
+    _available_architectures_2023 = frozenset(["x86-64-v3", "x86-64-v4", "generic"])
+    _available_architectures_2020 = frozenset(["avx", "avx2", "avx512", "generic", "sse3"])
     _available_pythons = None
     _compatible_tags = None
 
@@ -140,7 +142,14 @@ class RuntimeEnvironment(object):
         list
             Available architectures
         """
-        return self._available_architectures
+        if not self._available_architectures:
+            # If gentoo 2023 or newer, use new architecture names
+            if int(os.environ.get("EBVERSIONGENTOO", -1)) >= 2023:
+                self._available_architectures = self._available_architectures_2023
+            else:
+                self._available_architectures = self._available_architectures_2020
+
+            return self._available_architectures
 
     @property
     def available_pythons(self):
