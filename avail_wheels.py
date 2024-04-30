@@ -460,6 +460,10 @@ def main():
     if args.all:
         args.all_archs, args.all_versions, args.all_pythons = True, True, True
 
+        # If all is set, then warn that we are ignoring --arch, --version and --python
+        if args.arch or args.specifier or args.python:
+            warnings.warn("Ignoring --arch, --version and --python since --all is set.")
+
     reqs = get_requirements_set(args)
 
     # Specifying `all_arch` set `--arch` to None, hence returns all search paths from PIP_CONFIG_FILE
