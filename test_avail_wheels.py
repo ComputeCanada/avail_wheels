@@ -379,10 +379,10 @@ def test_get_wheels_exactname_arch_python(wheelhouse):
     pythons = ["3.6"]
     exactname = "scipy"
     other = {
-        "scipy": [
-            avail_wheels.Wheel.parse_wheel_filename("scipy-1.7.0-cp36-cp36m-linux_x86_64.whl", arch),
-            avail_wheels.Wheel.parse_wheel_filename("scipy-1.1.0-cp36-cp36m-linux_x86_64.whl", arch),
-        ]
+        "scipy": unordered([
+                avail_wheels.Wheel.parse_wheel_filename("scipy-1.7.0-cp36-cp36m-linux_x86_64.whl", arch),
+                avail_wheels.Wheel.parse_wheel_filename("scipy-1.1.0-cp36-cp36m-linux_x86_64.whl", arch),
+            ])
     }
 
     ret = avail_wheels.get_wheels(
@@ -401,10 +401,10 @@ def test_get_wheels_wildname_arch_python(wheelhouse):
     pythons = ["3.6"]
     wildname = "*scipy*"
     other = {
-        "scipy": [
+        "scipy": unordered([
             avail_wheels.Wheel.parse_wheel_filename("scipy-1.7.0-cp36-cp36m-linux_x86_64.whl", arch),
             avail_wheels.Wheel.parse_wheel_filename("scipy-1.1.0-cp36-cp36m-linux_x86_64.whl", arch),
-        ]
+        ])
     }
 
     ret = avail_wheels.get_wheels(
