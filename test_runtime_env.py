@@ -200,4 +200,10 @@ def test_compatible_tags(python, tag):
 
     assert isinstance(env.compatible_tags, dict)
     assert isinstance(env.compatible_tags[python], frozenset)
-    assert env.compatible_tags[python] == other
+
+    for tag in other:
+        assert tag in env.compatible_tags[python]
+
+    # Test that previous compatible tags are included
+    assert tags.Tag("cp38", "abi3", "linux_x86_64") in env.compatible_tags[python]
+    assert tags.Tag("py38", "none", "linux_x86_64") in env.compatible_tags[python]

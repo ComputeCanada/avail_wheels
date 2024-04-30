@@ -180,9 +180,6 @@ class RuntimeEnvironment(object):
         Returns compatible tags (interpreter-abi-platform) available.
         This includes universal (py2.py3, py3) and cpython tags.
 
-        The tags returned are filtered for the available python instead of
-        using a python range to generate the tags.
-
         For example, on a Linux system, for python 3.9:
         ```
             '3.9': frozenset([
@@ -193,8 +190,10 @@ class RuntimeEnvironment(object):
                 "py39-none-linux_x86_64",
                 "py3-none-any",
                 "py39-none-any",
+                ...
             ])
         ```
+        and previous compatible tags, like `cp38-abi3-linux_x86_64` or `py37-none-linux_x86_64`.
 
         Returns
         -------
@@ -204,17 +203,14 @@ class RuntimeEnvironment(object):
         if not self._compatible_tags:
             self._compatible_tags = {
                 ap: frozenset(
-                    filter(
-                        lambda x: x.interpreter in (f"py{ap[0]}", f"py{ap[0]}{ap[2:]}", f"cp{ap[0]}{ap[2:]}"),
-                        [
-                            *tags.compatible_tags(
-                                python_version=(int(ap[0]), int(ap[2:])), platforms=tags._generic_platforms()
-                            ),
-                            *tags.cpython_tags(
-                                python_version=(int(ap[0]), int(ap[2:])), platforms=tags._generic_platforms()
-                            ),
-                        ],
-                    )
+                    [
+                        *tags.compatible_tags(
+                            python_version=(int(ap[0]), int(ap[2:])), platforms=tags._generic_platforms()
+                        ),
+                        *tags.cpython_tags(
+                            python_version=(int(ap[0]), int(ap[2:])), platforms=tags._generic_platforms()
+                        ),
+                    ],
                 )
                 for ap in self.available_pythons
             }
