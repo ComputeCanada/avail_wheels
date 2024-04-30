@@ -8,6 +8,7 @@ import fnmatch
 import operator
 import warnings
 import configparser
+import tomllib
 from tabulate import tabulate, tabulate_formats
 import packaging
 import wild_requirements as requirements
@@ -346,9 +347,20 @@ def get_requirements_set(args):
         from pip._internal.req import req_file
         from pip._internal.network.session import PipSession
         for fname in args.requirements:
-            for freq in req_file.parse_requirements(fname, session=PipSession()):
-                r = requirements.Requirement(freq.requirement)
-                reqs[r.name] = r
+            # Read dependencies section from local pyproject.toml
+            if os.path.basename(fname) == "pyproject.toml":
+                with open(fname, 'rb') as f:
+                    pyproject = tomllib.load(f)
+
+                    # https://packaging.python.org/en/latest/guides/writing-pyproject-toml/#dependencies-and-requirements
+                    for freq in pyproject['project'].get('dependencies', []):
+                        r = requirements.Requirement(freq)
+                        reqs[r.name] = r
+            else:
+                # assume requirements.txt file
+                for freq in req_file.parse_requirements(fname, session=PipSession()):
+                    r = requirements.Requirement(freq.requirement)
+                    reqs[r.name] = r
 
     # Then add requirements from the command line so they are prioritize.
     for req in chain(args.wheel, args.name):
