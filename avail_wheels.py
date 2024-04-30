@@ -26,8 +26,8 @@ HEADERS = ['name', 'version', 'python', 'arch']
 DEFAULT_STAR_ARG = ['*']
 
 
-def __warning_on_one_line(message, category, filename, lineno, file=None, line=None):
-    return f'{filename}, {lineno}, {category.__name__}, {message}\n'
+def __warning_on_one_line(message, category, filename=None, lineno=None, file=None, line=None):
+    return f'{category.__name__}: {message}\n'
 
 
 warnings.formatwarning = __warning_on_one_line
