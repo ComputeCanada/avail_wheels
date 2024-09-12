@@ -407,7 +407,7 @@ def create_argparser():
     description = "List currently available wheels patterns from the wheelhouse. By default, it will:"
     description += "\n    - only show you the latest version of a specific package (unless versions are given);"
     description += "\n    - only show you versions that are compatible with the python module (if one loaded) or virtual environment (if activated), otherwise all python versions will be shown;"
-    description += "\n    - only show you versions that are compatible with the CPU architecture that you are currently running on."
+    description += "\n    - only show you versions that are compatible with the CPU architecture and software environment (StdEnv) that you are currently running on."
 
     epilog = "Examples:\n"
     epilog += "\n".join([
