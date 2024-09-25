@@ -55,7 +55,7 @@ class Wheel():
     Wheel(filename='numpy-1.20.1-cp38-cp38-linux_x86_64.whl', arch="", name='numpy', version=<Version('1.20.1')>, build=(), tags=frozenset({<cp38-cp38-linux_x86_64 @ 140549067913536>}))
     """
 
-    def __init__(self, filename="", arch="", name="", version="", build="", tags={}):
+    def __init__(self, filename="", arch="", name="", version="", build="", tags=frozenset()):
         self._filename = filename
         self._arch = arch
         self._name = name
