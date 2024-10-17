@@ -354,12 +354,12 @@ def get_requirements_set(args):
 
                     # https://packaging.python.org/en/latest/guides/writing-pyproject-toml/#dependencies-and-requirements
                     for freq in pyproject['project'].get('dependencies', []):
-                        r = requirements.Requirement(freq)
+                        r = make_requirement(freq)
                         reqs[r.name] = r
             else:
                 # assume requirements.txt file
                 for freq in req_file.parse_requirements(fname, session=PipSession()):
-                    r = requirements.Requirement(freq.requirement)
+                    r = make_requirement(freq.requirement)
                     reqs[r.name] = r
 
     # Then add requirements from the command line so they are prioritize.

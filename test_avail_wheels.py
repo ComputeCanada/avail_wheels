@@ -380,9 +380,9 @@ def test_get_wheels_exactname_arch_python(wheelhouse):
     exactname = "scipy"
     other = {
         "scipy": unordered([
-                avail_wheels.Wheel.parse_wheel_filename("scipy-1.7.0-cp36-cp36m-linux_x86_64.whl", arch),
-                avail_wheels.Wheel.parse_wheel_filename("scipy-1.1.0-cp36-cp36m-linux_x86_64.whl", arch),
-            ])
+            avail_wheels.Wheel.parse_wheel_filename("scipy-1.7.0-cp36-cp36m-linux_x86_64.whl", arch),
+            avail_wheels.Wheel.parse_wheel_filename("scipy-1.1.0-cp36-cp36m-linux_x86_64.whl", arch),
+        ])
     }
 
     ret = avail_wheels.get_wheels(
@@ -979,7 +979,7 @@ def test_get_requirements_set_requirements_file(tmp_path):
     p = tmp_path / "r1.txt"
     p.write_text("\n".join(["numpy", "dgl-cpu", "ab.py==1.9"]))
     p = tmp_path / "r2.txt"
-    p.write_text("\n".join(["scipy"]))
+    p.write_text("\n".join(["scipy", "dummy~=4.0.0+computecanada"]))
 
     args = avail_wheels.create_argparser().parse_args(["--requirement", f"{str(tmp_path)}/r1.txt", f"{str(tmp_path)}/r2.txt"])
 
@@ -988,6 +988,7 @@ def test_get_requirements_set_requirements_file(tmp_path):
         "dgl_cpu": Requirement("dgl_cpu"),
         "ab.py": Requirement("ab.py==1.9"),
         "scipy": Requirement("scipy"),
+        "dummy": Requirement("dummy~=4.0.0"),
     }
 
 
@@ -1017,10 +1018,11 @@ def test_get_requirements_set_from_names():
     Names should also be normalized : dgl-cpu -> dgl_cpu.
     Duplicates should not exists.
     """
-    args = avail_wheels.create_argparser().parse_args(["torch", "dgl-cpu", "ab.py==1.9"])
+    args = avail_wheels.create_argparser().parse_args(["torch", "dgl-cpu", "ab.py==1.9", "dummy==4+localversion"])
 
     assert avail_wheels.get_requirements_set(args) == {
         "torch": Requirement("torch"),
         "dgl_cpu": Requirement("dgl_cpu"),
         "ab.py": Requirement("ab.py==1.9"),
+        "dummy": Requirement("dummy==4")
     }
