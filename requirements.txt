@@ -2,4 +2,4 @@ tabulate
 
 # Hard constraint since we rely on the API
 packaging==21.3
-pip==24.0
+pip==24.2
