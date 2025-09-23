@@ -986,7 +986,7 @@ def test_get_requirements_set_requirements_file(tmp_path):
     assert avail_wheels.get_requirements_set(args) == {
         "numpy": Requirement("numpy"),
         "dgl_cpu": Requirement("dgl_cpu"),
-        "ab.py": Requirement("ab.py==1.9"),
+        "ab_py": Requirement("ab_py==1.9"),
         "scipy": Requirement("scipy"),
         "dummy": Requirement("dummy~=4.0.0"),
     }
@@ -1008,14 +1008,14 @@ def test_get_requirements_set_requirements_file_and_names(tmp_path):
         "torch": Requirement("torch"),
         "dgl_cpu": Requirement("dgl_cpu==1.0"),
         "numpy": Requirement("numpy"),
-        "ab.py": Requirement("ab.py==1.9"),
+        "ab_py": Requirement("ab_py==1.9"),
     }
 
 
 def test_get_requirements_set_from_names():
     """
     Test that requirements set comes from command line.
-    Names should also be normalized : dgl-cpu -> dgl_cpu.
+    Names should also be normalized : dgl-cpu -> dgl_cpu, ab.py -> ab_py (PEP 503).
     Duplicates should not exists.
     """
     args = avail_wheels.create_argparser().parse_args(["torch", "dgl-cpu", "ab.py==1.9", "dummy==4+localversion"])
@@ -1023,6 +1023,48 @@ def test_get_requirements_set_from_names():
     assert avail_wheels.get_requirements_set(args) == {
         "torch": Requirement("torch"),
         "dgl_cpu": Requirement("dgl_cpu"),
-        "ab.py": Requirement("ab.py==1.9"),
+        "ab_py": Requirement("ab_py==1.9"),
         "dummy": Requirement("dummy==4")
     }
+
+
+def test_package_name_normalization_dots_and_underscores():
+    """Test that package names with dots and underscores are normalized correctly."""
+    import wild_requirements
+    
+    # Test that dots are replaced with underscores in package names (PEP 503)
+    req1 = wild_requirements.Requirement('jaraco_functools')
+    req2 = wild_requirements.Requirement('jaraco.functools')
+    req3 = wild_requirements.Requirement('JARACO.FUNCTOOLS')
+    req4 = wild_requirements.Requirement('jaraco-functools')
+    
+    # All should be normalized to the same name
+    assert req1.name == 'jaraco_functools'
+    assert req2.name == 'jaraco_functools'
+    assert req3.name == 'jaraco_functools'
+    assert req4.name == 'jaraco_functools'
+    
+    # Test with wheel matching
+    wheel = avail_wheels.Wheel.parse_wheel_filename('jaraco_functools-3.5.0-py3-none-any.whl')
+    
+    reqs1 = defaultdict(wild_requirements.Requirement)
+    reqs1[req1.name] = req1
+    
+    reqs2 = defaultdict(wild_requirements.Requirement)
+    reqs2[req2.name] = req2
+    
+    # Both should match the wheel
+    assert avail_wheels.match_version(wheel, reqs1)
+    assert avail_wheels.match_version(wheel, reqs2)
+    
+    # Test that regex generation works for both forms
+    rexes1 = avail_wheels.get_rexes([req1.name])
+    rexes2 = avail_wheels.get_rexes([req2.name])
+    
+    # Both should generate the same regex
+    assert rexes1[0].pattern == rexes2[0].pattern
+    
+    # Both should match the wheel filename
+    filename = 'jaraco_functools-3.5.0-py3-none-any.whl'
+    assert avail_wheels.match_file(filename, rexes1)
+    assert avail_wheels.match_file(filename, rexes2)

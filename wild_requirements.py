@@ -106,8 +106,8 @@ class Requirement:
                 f'Parse error at "{ requirement_string[e.loc : e.loc + 8]!r}": {e.msg}'
             )
 
-        # Cannonicalize name
-        self.name = req.name.replace("-", "_").lower()  # type: str
+        # Cannonicalize name (PEP 503: replace dots and hyphens with underscores)
+        self.name = req.name.replace("-", "_").replace(".", "_").lower()  # type: str
         if req.url:
             parsed_url = urllib.parse.urlparse(req.url)
             if parsed_url.scheme == "file":
