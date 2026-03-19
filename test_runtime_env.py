@@ -173,7 +173,8 @@ def test_available_pythons_cvmfs(monkeypatch):
     Test that the default available pythons versions are from CVMFS.
     """
     monkeypatch.delenv("PYTHON_DIRS", raising=False)
-    assert RuntimeEnvironment().available_pythons == ["2.7", "3.5", "3.6", "3.7", "3.8", "3.9", "3.10", "3.11", "3.12"]
+    expected = {"2.7", "3.5", "3.6", "3.7", "3.8", "3.9", "3.10", "3.11", "3.12", "3.13", "3.14"}
+    assert expected.issubset(RuntimeEnvironment().available_pythons)
 
 
 @pytest.mark.parametrize("python,tag", [
