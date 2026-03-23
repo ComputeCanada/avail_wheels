@@ -167,10 +167,18 @@ def match_version(wheel, reqs):
     Match an exact requirements or a wild requirements.
     When a requirements has no specifiers, it automatically match.
     """
-    if wheel.namelower in reqs:
-        return wheel.version in reqs[wheel.namelower].specifier
-    else:
-        return any(re.match(fnmatch.translate(req_name), wheel.namelower, re.IGNORECASE) and wheel.version in req.specifier for req_name, req in reqs.items())
+    name = wheel.namelower
+    version = wheel.version
+    req = reqs.get(name)
+
+    # exact name match
+    if req:
+        return version in req.specifier
+
+    return any(
+        re.match(fnmatch.translate(req_name), name, re.IGNORECASE) and version in req.specifier
+        for req_name, req in reqs.items()
+    )
 
 
 def get_rexes(reqs):
