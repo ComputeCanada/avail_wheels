@@ -202,9 +202,8 @@ def get_wheels(paths, reqs, pythons, latest):
         """
         for path in paths:
             arch = os.path.basename(path)
-            for _, _, files in os.walk(f"{path}"):
-                for file in files:
-                    yield arch, file
+            for entry in os.scandir(path):
+                yield arch, entry.name
 
     wheels = defaultdict(list)
 
