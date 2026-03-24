@@ -164,11 +164,11 @@ class RuntimeEnvironment(object):
         if not self._available_pythons:
             versions = set()
             for path in self.python_directories.split(':'):
-                for python_directory in glob(path):
-                    for python_version in os.listdir(python_directory):
-                        if re.match(r"\d+.\d+(.\d+)?", python_version):
-                            # Slice `3.8.0` to `3.8` (major.minor)
-                            versions.add('.'.join(python_version.split('.')[:2]))
+                # match 3.11 or 3.11.5 directories directly
+                for entry in glob(f"{path}/[0-9]*.[0-9]*"):
+                    parts = os.path.basename(entry).split('.')
+                    versions.add(f"{parts[0]}.{parts[1]}")
+
             # naturally sort versions
             self._available_pythons = sorted(versions, key=version.parse)
 
