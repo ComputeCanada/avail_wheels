@@ -853,6 +853,13 @@ def test_filter_search_paths_arch():
     ]
 
 
+def test_filter_search_paths_no_match():
+    """Test that an empty list is returned when no paths match the filter."""
+
+    search_paths = [f"path/{p}" for p in ("avx2", "generic")]
+    assert avail_wheels.filter_search_paths(search_paths, ["avx512"]) == []
+
+
 def test_search_paths_no_pip_config_file(monkeypatch, wheelhouse):
     """
     Test that no PIP_CONFIG_FILE environment variable exists.

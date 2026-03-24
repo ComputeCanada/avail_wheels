@@ -308,10 +308,14 @@ def filter_search_paths(search_paths, arch_values):
     """
     Filter paths that ends with specific values.
     """
-    if arch_values is None or arch_values == []:
+    if not arch_values:
         return search_paths
 
-    return [path for arch_value in arch_values for path in search_paths if path.endswith(arch_value)]
+    return [
+        path
+        for path in search_paths
+        if any(path.endswith(arch_value) for arch_value in arch_values)
+    ]
 
 
 def get_search_paths():
