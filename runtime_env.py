@@ -4,7 +4,6 @@ import os
 from glob import glob
 from subprocess import run
 import re
-from packaging import tags, version
 
 
 class RuntimeEnvironment(object):
@@ -170,6 +169,7 @@ class RuntimeEnvironment(object):
             Available python versions
         """
         if not self._available_pythons:
+            from packaging import version # lazy import
             versions = set()
             for path in self.python_directories.split(':'):
                 # match 3.11 or 3.11.5 directories directly
@@ -209,6 +209,7 @@ class RuntimeEnvironment(object):
             Compatible tags per available python version
         """
         if not self._compatible_tags:
+            from packaging import tags # lazy import
             self._compatible_tags = {
                 ap: frozenset(
                     [

@@ -8,7 +8,6 @@ import fnmatch
 import operator
 import warnings
 import configparser
-import tomllib
 from tabulate import tabulate, tabulate_formats
 import packaging
 import wild_requirements as requirements
@@ -350,6 +349,7 @@ def get_requirements_set(args):
         # Include here, as importing is slow!
         from pip._internal.req import req_file
         from pip._internal.network.session import PipSession
+        import tomllib
         for fname in args.requirements:
             # Read dependencies section from local pyproject.toml
             if os.path.basename(fname) == "pyproject.toml":
