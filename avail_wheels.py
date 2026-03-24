@@ -294,7 +294,7 @@ def add_not_available_wheels(wheels, reqs, not_available_only=False):
     """ Add the wheels names given from the user that were not found. """
 
     # Return the wheel set, or an empty set where wheels not available were added.
-    ret = wheels if not not_available_only else defaultdict(list)
+    ret = defaultdict(list) if not_available_only else wheels
 
     for wheel in reqs:
         # Do not duplicate and add names that translate to an already present name.
