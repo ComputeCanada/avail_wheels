@@ -318,11 +318,16 @@ def get_search_paths():
     """
     Gets the search paths from the $PIP_CONFIG_FILE or start at root of the wheelhouse.
     """
-    if env.pip_config_file is None or env.pip_config_file == "":
-        return [os.path.join(root, d) for root, dirs, _ in os.walk(env.wheelhouse) if root[len(env.wheelhouse):].count(os.sep) == 1 for d in dirs]
+    if not env.pip_config_file:
+        return [
+            os.path.join(root, d)
+            for root, dirs, _ in os.walk(env.wheelhouse) if root[len(env.wheelhouse):].count(os.sep) == 1
+            for d in dirs
+        ]
 
     cfg = configparser.ConfigParser()
-    cfg.read_file(open(env.pip_config_file))
+    with open(env.pip_config_file) as f:
+        cfg.read_file(f)
     return cfg['wheel']['find-links'].split(' ')
 
 
