@@ -80,8 +80,16 @@ class RuntimeEnvironment(object):
         if not self._current_python:
             # virtual env. has precedence on modules
             if 'VIRTUAL_ENV' in os.environ:
-                # Check the activated virtual env
-                self._current_python = run("python -c 'import platform; print(platform.python_version())'", shell=True, capture_output=True).stdout.decode()
+                try:
+                    with open(f"{os.environ['VIRTUAL_ENV']}/pyvenv.cfg") as f:
+                        for line in f:
+                            key, _, value = line.partition('=')
+                            if key.strip().startswith('version'):
+                                self._current_python = value.strip()
+                                break
+                except (OSError, IOError):
+                    # fallback to subprocess if pyvenv.cfg is missing or unreadable
+                    self._current_python = run(["python", "-c", "import platform; print(platform.python_version())"], text=True, capture_output=True).stdout.strip()
             else:
                 self._current_python = os.environ.get("EBVERSIONPYTHON", None)
 
