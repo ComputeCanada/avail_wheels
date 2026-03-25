@@ -239,18 +239,11 @@ def latest_versions(wheels):
     """
     Returns only the latest version of each wheel.
     """
-    latests = defaultdict(list)
+    latests = {}
 
     for wheel_name, wheel_list in wheels.items():
-        wheel_list.sort(key=operator.attrgetter('loose_version'), reverse=True)
-        latests[wheel_name] = []
-        latest = wheel_list[0].loose_version
-
-        for wheel in wheel_list:
-            if latest == wheel.loose_version:
-                latests[wheel_name].append(wheel)
-            else:
-                break
+        latest = max(w.loose_version for w in wheel_list)
+        latests[wheel_name] = [w for w in wheel_list if w.loose_version == latest]
 
     return latests
 
