@@ -183,14 +183,16 @@ class RuntimeEnvironment(object):
             Compatible tags per available python version
         """
         from packaging import tags # lazy import
+        platforms = tuple(tags._generic_platforms())
+
         return {
             ap: frozenset(
                 [
                     *tags.compatible_tags(
-                        python_version=(int(ap[0]), int(ap[2:])), platforms=tags._generic_platforms()
+                        python_version=(int(ap[0]), int(ap[2:])), platforms=platforms
                     ),
                     *tags.cpython_tags(
-                        python_version=(int(ap[0]), int(ap[2:])), platforms=tags._generic_platforms()
+                        python_version=(int(ap[0]), int(ap[2:])), platforms=platforms
                     ),
                 ],
             )
