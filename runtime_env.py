@@ -144,7 +144,6 @@ class RuntimeEnvironment(object):
         list
             Available python versions
         """
-        from packaging import version # lazy import
         versions = set()
 
         for path in self.python_directories.split(':'):
@@ -154,7 +153,7 @@ class RuntimeEnvironment(object):
                 versions.add(f"{parts[0]}.{parts[1]}")
 
         # naturally sort versions
-        return sorted(versions, key=version.parse)
+        return sorted(versions, key=lambda v:tuple(int(x) for x in v.split('.')))
 
     @cached_property
     def compatible_tags(self):
