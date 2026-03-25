@@ -610,6 +610,7 @@ def test_parse_args_all_archs():
     assert args.all_archs
 
 
+@pytest.mark.skipif(int(os.environ.get('EBVERSIONGENTOO', -1)) != 2020, reason="StdEnv 2020 test")
 def test_parse_args_many_arch():
     """ Test that --arch is a list of given values. """
     arch = ["avx2", "avx"]
@@ -918,6 +919,7 @@ def test_search_paths_pip_config_file_exists(monkeypatch, pip_config_file):
     Test that PIP_CONFIG_FILE environment variable exists and use the configuration file.
     """
     monkeypatch.setenv("PIP_CONFIG_FILE", str(pip_config_file))
+    avail_wheels.env = RuntimeEnvironment()
 
     other = [
         f"{pip_config_file.parent}/wheelhouse/gentoo/avx2",

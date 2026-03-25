@@ -3,8 +3,7 @@
 import os
 from glob import glob
 from subprocess import run
-import re
-
+from functools import cached_property
 
 class RuntimeEnvironment(object):
     """
@@ -17,18 +16,10 @@ class RuntimeEnvironment(object):
     - etc.
     """
 
-    _wheelhouse = None
-    _current_python = None
-    _pip_config_file = None
-    _python_dirs = None
-    _current_architecture = None
-    _available_architectures = None
     _available_architectures_2023 = frozenset(["x86-64-v3", "x86-64-v4", "generic"])
     _available_architectures_2020 = frozenset(["avx", "avx2", "avx512", "generic", "sse3"])
-    _available_pythons = None
-    _compatible_tags = None
 
-    @property
+    @cached_property
     def wheelhouse(self):
         """
         Returns the wheelhouse path defined by the `WHEELHOUSE` environment variable.
@@ -40,14 +31,11 @@ class RuntimeEnvironment(object):
         str
             Path to the wheelhouse
         """
-        if not self._wheelhouse:
-            self._wheelhouse = os.environ.get(
-                "WHEELHOUSE", "/cvmfs/soft.computecanada.ca/custom/python/wheelhouse"
-            )
+        return os.environ.get(
+            "WHEELHOUSE", "/cvmfs/soft.computecanada.ca/custom/python/wheelhouse"
+        )
 
-        return self._wheelhouse
-
-    @property
+    @cached_property
     def pip_config_file(self):
         """
         Returns the pip configuration file path defined by the `PIP_CONFIG_FILE` environment variable
@@ -58,12 +46,9 @@ class RuntimeEnvironment(object):
         str
             Path to the pip configuration file, or None
         """
-        if not self._pip_config_file:
-            self._pip_config_file = os.environ.get("PIP_CONFIG_FILE", None)
+        return os.environ.get("PIP_CONFIG_FILE", None)
 
-        return self._pip_config_file
-
-    @property
+    @cached_property
     def current_python(self):
         """
         Returns the current python version or None if it could not be determined.
@@ -76,29 +61,28 @@ class RuntimeEnvironment(object):
         str
             Current Python version : major.minor, or None
         """
-        if not self._current_python:
-            # virtual env. has precedence on modules
-            if 'VIRTUAL_ENV' in os.environ:
-                try:
-                    with open(f"{os.environ['VIRTUAL_ENV']}/pyvenv.cfg") as f:
-                        for line in f:
-                            key, _, value = line.partition('=')
-                            if key.strip().startswith('version'):
-                                self._current_python = value.strip()
-                                break
-                except (OSError, IOError):
-                    # fallback to subprocess if pyvenv.cfg is missing or unreadable
-                    self._current_python = run(["python", "-c", "import platform; print(platform.python_version())"], text=True, capture_output=True).stdout.strip()
-            else:
-                self._current_python = os.environ.get("EBVERSIONPYTHON", None)
+        # virtual env. has precedence on modules
+        if 'VIRTUAL_ENV' in os.environ:
+            try:
+                with open(f"{os.environ['VIRTUAL_ENV']}/pyvenv.cfg") as f:
+                    for line in f:
+                        key, _, value = line.partition('=')
+                        if key.strip().startswith('version'):
+                            python = value.strip()
+                            break
+            except (OSError, IOError):
+                # fallback to subprocess if pyvenv.cfg is missing or unreadable
+                python = run(["python", "-c", "import platform; print(platform.python_version())"], text=True, capture_output=True).stdout.strip()
+        else:
+            python = os.environ.get("EBVERSIONPYTHON", None)
 
-            # Keep major and minor parts
-            if self._current_python:
-                self._current_python = ".".join(self._current_python.split(".")[:2])
+        # Keep major and minor parts
+        if python:
+            python = ".".join(python.split(".")[:2])
 
-        return self._current_python
+        return python
 
-    @property
+    @cached_property
     def python_directories(self):
         """
         Returns the python directories path defined by the PYTHON_DIRS environment variable.
@@ -112,19 +96,17 @@ class RuntimeEnvironment(object):
         str
             Path to the Python directories (versions)
         """
-        if not self._python_dirs:
-            self._python_dirs = os.environ.get(
-                "PYTHON_DIRS",
-                ":".join([
-                    "/cvmfs/soft.computecanada.ca/easybuild/software/20*/Core/python",
-                    "/cvmfs/soft.computecanada.ca/easybuild/software/20*/*/Core/python",
-                    "/cvmfs/soft.computecanada.ca/easybuild/software/20*/*/Compiler/gcccore/python"
-                ])
-            )
+        return os.environ.get(
+            "PYTHON_DIRS",
+            ":".join([
+                "/cvmfs/soft.computecanada.ca/easybuild/software/20*/Core/python",
+                "/cvmfs/soft.computecanada.ca/easybuild/software/20*/*/Core/python",
+                "/cvmfs/soft.computecanada.ca/easybuild/software/20*/*/Compiler/gcccore/python"
+            ])
+        )
 
-        return self._python_dirs
 
-    @property
+    @cached_property
     def current_architecture(self):
         """
         Returns the current architecture from RSNT_ARCH environment variable or None if it is not defined.
@@ -134,12 +116,9 @@ class RuntimeEnvironment(object):
         str
             Current architecture, or None
         """
-        if not self._current_architecture:
-            self._current_architecture = os.environ.get("RSNT_ARCH", None)
+        return os.environ.get("RSNT_ARCH", None)
 
-        return self._current_architecture
-
-    @property
+    @cached_property
     def available_architectures(self):
         """
         Returns the available architectures from CVMFS.
@@ -149,16 +128,13 @@ class RuntimeEnvironment(object):
         list
             Available architectures
         """
-        if not self._available_architectures:
-            # If gentoo 2023 or newer, use new architecture names
-            if int(os.environ.get("EBVERSIONGENTOO", -1)) >= 2023:
-                self._available_architectures = self._available_architectures_2023
-            else:
-                self._available_architectures = self._available_architectures_2020
+        # If gentoo 2023 or newer, use new architecture names
+        if int(os.environ.get("EBVERSIONGENTOO", -1)) >= 2023:
+            return self._available_architectures_2023
+        else:
+            return self._available_architectures_2020
 
-            return self._available_architectures
-
-    @property
+    @cached_property
     def available_pythons(self):
         """
         Returns available python versions (major.minor) from CVMFS.
@@ -168,21 +144,19 @@ class RuntimeEnvironment(object):
         list
             Available python versions
         """
-        if not self._available_pythons:
-            from packaging import version # lazy import
-            versions = set()
-            for path in self.python_directories.split(':'):
-                # match 3.11 or 3.11.5 directories directly
-                for entry in glob(f"{path}/[0-9]*.[0-9]*"):
-                    parts = os.path.basename(entry).split('.')
-                    versions.add(f"{parts[0]}.{parts[1]}")
+        from packaging import version # lazy import
+        versions = set()
 
-            # naturally sort versions
-            self._available_pythons = sorted(versions, key=version.parse)
+        for path in self.python_directories.split(':'):
+            # match 3.11 or 3.11.5 directories directly
+            for entry in glob(f"{path}/[0-9]*.[0-9]*"):
+                parts = os.path.basename(entry).split('.')
+                versions.add(f"{parts[0]}.{parts[1]}")
 
-        return self._available_pythons
+        # naturally sort versions
+        return sorted(versions, key=version.parse)
 
-    @property
+    @cached_property
     def compatible_tags(self):
         """
         Returns compatible tags (interpreter-abi-platform) available.
@@ -208,20 +182,17 @@ class RuntimeEnvironment(object):
         dict
             Compatible tags per available python version
         """
-        if not self._compatible_tags:
-            from packaging import tags # lazy import
-            self._compatible_tags = {
-                ap: frozenset(
-                    [
-                        *tags.compatible_tags(
-                            python_version=(int(ap[0]), int(ap[2:])), platforms=tags._generic_platforms()
-                        ),
-                        *tags.cpython_tags(
-                            python_version=(int(ap[0]), int(ap[2:])), platforms=tags._generic_platforms()
-                        ),
-                    ],
-                )
-                for ap in self.available_pythons
-            }
-
-        return self._compatible_tags
+        from packaging import tags # lazy import
+        return {
+            ap: frozenset(
+                [
+                    *tags.compatible_tags(
+                        python_version=(int(ap[0]), int(ap[2:])), platforms=tags._generic_platforms()
+                    ),
+                    *tags.cpython_tags(
+                        python_version=(int(ap[0]), int(ap[2:])), platforms=tags._generic_platforms()
+                    ),
+                ],
+            )
+            for ap in self.available_pythons
+        }
