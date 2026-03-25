@@ -221,7 +221,7 @@ def get_wheels(paths, reqs, pythons, latest):
         for arch, file in _get_wheels_from_fs(paths):
             if match_file(file, rexes):
                 wheel = Wheel.parse_wheel_filename(file, arch)
-                if match_version(wheel, reqs) and is_compatible(wheel, pythons):
+                if is_compatible(wheel, pythons) and match_version(wheel, reqs):
                     wheels[wheel.namelower].append(wheel)
 
     # Display all available wheels that are compatible (no reqs were given)
