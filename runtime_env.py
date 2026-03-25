@@ -147,10 +147,11 @@ class RuntimeEnvironment(object):
         versions = set()
 
         for path in self.python_directories.split(':'):
-            # match 3.11 or 3.11.5 directories directly
-            for entry in glob(f"{path}/[0-9]*.[0-9]*"):
-                parts = os.path.basename(entry).split('.')
-                versions.add(f"{parts[0]}.{parts[1]}")
+            for python_directory in glob(path):
+                for python_version in os.listdir(python_directory):
+                    parts = python_version.split('.')
+                    if len(parts) > 1 and all(p.isdigit() for p in parts):
+                        versions.add(f"{parts[0]}.{parts[1]}")
 
         # naturally sort versions
         return sorted(versions, key=lambda v:tuple(int(x) for x in v.split('.')))
