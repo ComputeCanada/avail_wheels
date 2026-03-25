@@ -195,7 +195,7 @@ def test_wheel_parse_tags():
 def test_wheel_loose_version():
     """Test that the string repr of version is a parsed version."""
     wheel = avail_wheels.Wheel(version="1.2+cc")
-    loose_version = wheel.loose_version()
+    loose_version = wheel.loose_version
 
     assert isinstance(loose_version, packaging.version.Version)
     assert loose_version == packaging.version.Version("1.2+cc")

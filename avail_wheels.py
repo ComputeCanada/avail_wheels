@@ -14,6 +14,7 @@ import wild_requirements as requirements
 from runtime_env import RuntimeEnvironment
 from collections import defaultdict
 from itertools import chain
+from functools import cached_property
 
 
 __version__ = "3.0.0.dev"
@@ -89,6 +90,7 @@ class Wheel():
             warnings.warn(f"Could not get tags for : {filename}")
             return Wheel(filename=filename, arch=arch)
 
+    @cached_property
     def loose_version(self):
         return packaging.version.parse(self._version)
 
@@ -110,11 +112,11 @@ class Wheel():
 
     @property
     def version(self):
-        return self.loose_version().public
+        return self.loose_version.public
 
     @property
     def localversion(self):
-        return self.loose_version().local
+        return self.loose_version.local
 
     @property
     def build(self):
@@ -124,15 +126,15 @@ class Wheel():
     def tags(self):
         return self._tags
 
-    @property
+    @cached_property
     def python(self):
         return ",".join(sorted(set(tag.interpreter for tag in self._tags)))
 
-    @property
+    @cached_property
     def abi(self):
         return ",".join(sorted(set(tag.abi for tag in self._tags)))
 
-    @property
+    @cached_property
     def platform(self):
         return ",".join(sorted(set(tag.platform for tag in self._tags)))
 
@@ -146,7 +148,14 @@ class Wheel():
         if not isinstance(other, Wheel):
             return NotImplemented
 
-        return self.__dict__ == other.__dict__
+        return (
+            self._filename == other._filename
+            and self._arch == other._arch
+            and self._name == other._name
+            and self._version == other._version
+            and self._build == other._build
+            and self._tags == other._tags
+        )
 
 
 def is_compatible(wheel, pythons):
@@ -233,12 +242,12 @@ def latest_versions(wheels):
     latests = defaultdict(list)
 
     for wheel_name, wheel_list in wheels.items():
-        wheel_list.sort(key=operator.methodcaller('loose_version'), reverse=True)
+        wheel_list.sort(key=operator.attrgetter('loose_version'), reverse=True)
         latests[wheel_name] = []
-        latest = wheel_list[0].loose_version()
+        latest = wheel_list[0].loose_version
 
         for wheel in wheel_list:
-            if latest == wheel.loose_version():
+            if latest == wheel.loose_version:
                 latests[wheel_name].append(wheel)
             else:
                 break
@@ -268,7 +277,7 @@ def sort(wheels, columns, condense=False):
         wheel_list = wheels[wheel_name]
         wheel_list.sort(key=lambda x: loose_key(x.python), reverse=True)
         wheel_list.sort(key=operator.attrgetter('arch'), reverse=True)
-        wheel_list.sort(key=operator.methodcaller('loose_version'), reverse=True)
+        wheel_list.sort(key=operator.attrgetter('loose_version'), reverse=True)
 
         # Condense wheel information on one line.
         # For every column, every wheel, insert the tag into a uniq set, then join tag values and re-sort.
