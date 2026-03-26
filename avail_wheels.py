@@ -106,7 +106,7 @@ class Wheel():
     def name(self):
         return self._name
 
-    @property
+    @cached_property
     def namelower(self):
         return self._name.lower()
 
