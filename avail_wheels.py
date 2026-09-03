@@ -85,13 +85,14 @@ class Wheel():
         """
         m = WHEEL_RE.match(filename)
         if m:
+            name, version, _, build, tags = m.groups()
             return Wheel(
                 filename=filename,
                 arch=arch,
-                name=m.group('name'),
-                version=m.group('version'),
-                build=m.group('build') or "",  # Build is optional
-                tags=_parse_tag_cached(m.group('tags')),
+                name=name,
+                version=version,
+                build=build or "",  # Build is optional
+                tags=_parse_tag_cached(tags),
             )
         else:
             warnings.warn(f"Could not get tags for : {filename}")
