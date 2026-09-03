@@ -1034,3 +1034,98 @@ def test_get_requirements_set_from_names():
         "ab.py": Requirement("ab.py==1.9"),
         "dummy": Requirement("dummy==4")
     }
+
+
+def test_remove_duplicates_wheel_filenames_no_duplicates():
+    """Test that a list of distinct wheel filenames is preserved as-is."""
+    wheels = [
+        "numpy-1.25.0-cp39-cp39-linux_x86_64.whl",
+        "scipy-1.11.0-cp39-cp39-linux_x86_64.whl",
+        "torch-2.1.0-cp310-cp310-linux_x86_64.whl",
+    ]
+    assert avail_wheels.remove_duplicates(wheels) == wheels
+
+
+def test_remove_duplicates_wheel_filenames_consecutive():
+    """Test removing adjacent duplicate wheel filenames (e.g. from multiple search paths)."""
+    wheels = [
+        "numpy-1.25.0-cp39-cp39-linux_x86_64.whl",
+        "numpy-1.25.0-cp39-cp39-linux_x86_64.whl",
+        "scipy-1.11.0-cp310-cp310-linux_x86_64.whl",
+    ]
+    expected = [
+        "numpy-1.25.0-cp39-cp39-linux_x86_64.whl",
+        "scipy-1.11.0-cp310-cp310-linux_x86_64.whl",
+    ]
+    assert avail_wheels.remove_duplicates(wheels) == expected
+
+
+def test_remove_duplicates_wheel_filenames_non_consecutive_preserves_order():
+    """Test that order of first appearance is preserved when duplicates are scattered."""
+    wheels = [
+        "mmcv-2.1.0+torch211.computecanada-cp312-cp312-linux_x86_64.whl",
+        "mmcv-2.1.0+computecanada-cp310-cp310-linux_x86_64.whl",
+        "mmcv-2.1.0+torch211.computecanada-cp311-cp311-linux_x86_64.whl",
+        "mmcv-2.1.0+torch211.computecanada-cp312-cp312-linux_x86_64.whl",  # duplicate of index 0
+        "mmcv-2.1.0+computecanada-cp310-cp310-linux_x86_64.whl",          # duplicate of index 1
+    ]
+    expected = [
+        "mmcv-2.1.0+torch211.computecanada-cp312-cp312-linux_x86_64.whl",
+        "mmcv-2.1.0+computecanada-cp310-cp310-linux_x86_64.whl",
+        "mmcv-2.1.0+torch211.computecanada-cp311-cp311-linux_x86_64.whl",
+    ]
+    assert avail_wheels.remove_duplicates(wheels) == expected
+
+
+def test_remove_duplicates_wheel_filenames_all_identical():
+    """Test that a list where all filenames are identical reduces to a single entry."""
+    wheels = [
+        "causal_conv1d-1.1.3.post1+computecanada-cp310-cp310-linux_x86_64.whl",
+        "causal_conv1d-1.1.3.post1+computecanada-cp310-cp310-linux_x86_64.whl",
+        "causal_conv1d-1.1.3.post1+computecanada-cp310-cp310-linux_x86_64.whl",
+    ]
+    expected = [
+        "causal_conv1d-1.1.3.post1+computecanada-cp310-cp310-linux_x86_64.whl"
+    ]
+    assert avail_wheels.remove_duplicates(wheels) == expected
+
+
+def test_remove_duplicates_empty():
+    """Test empty input returns empty list."""
+    assert avail_wheels.remove_duplicates([]) == []
+
+
+def test_remove_duplicates_wheel_table_rows_default_columns():
+    """
+    Test deduplicating display rows when multiple wheels differ only by
+    local version (e.g. +torch211 vs +computecanada), which is not in the columns.
+    """
+    # Columns: [name, version, python, arch]
+    rows = [
+        ["mmcv", "2.1.0", "cp312", "generic"],
+        ["mmcv", "2.1.0", "cp311", "generic"],  # From mmcv-2.1.0+torch211...
+        ["mmcv", "2.1.0", "cp311", "generic"],  # From mmcv-2.1.0+computecanada... (DUPLICATE)
+        ["mmcv", "2.1.0", "cp310", "generic"],
+    ]
+    expected = [
+        ["mmcv", "2.1.0", "cp312", "generic"],
+        ["mmcv", "2.1.0", "cp311", "generic"],
+        ["mmcv", "2.1.0", "cp310", "generic"],
+    ]
+    assert avail_wheels.remove_duplicates(rows) == expected
+
+
+def test_remove_duplicates_wheel_table_rows_with_localversion():
+    """
+    Test that when localversion is present in columns, rows with different
+    local versions are NOT treated as duplicates and are both preserved.
+    """
+    # Columns: [name, version, localversion, python, arch]
+    rows = [
+        ["mmcv", "2.1.0", "torch211.computecanada", "cp312", "generic"],
+        ["mmcv", "2.1.0", "torch211.computecanada", "cp311", "generic"],
+        ["mmcv", "2.1.0", "computecanada",          "cp311", "generic"],  # Distinct localversion
+        ["mmcv", "2.1.0", "computecanada",          "cp310", "generic"],
+    ]
+    # All 4 rows are unique
+    assert avail_wheels.remove_duplicates(rows) == rows

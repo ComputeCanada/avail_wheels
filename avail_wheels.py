@@ -242,10 +242,26 @@ def latest_versions(wheels):
     latests = {}
 
     for wheel_name, wheel_list in wheels.items():
-        latest = max(w.loose_version for w in wheel_list)
-        latests[wheel_name] = [w for w in wheel_list if w.loose_version == latest]
+        latest = max(w.version for w in wheel_list)
+        latests[wheel_name] = [w for w in wheel_list if w.version == latest]
 
     return latests
+
+
+def remove_duplicates(seq):
+    """
+    Remove duplicate items from a sequence while preserving order.
+    """
+    seen = set()
+    ret = []
+
+    for item in seq:
+        key = tuple(item) if isinstance(item, list) else item
+        if key not in seen:
+            seen.add(key)
+            ret.append(item)
+
+    return ret
 
 
 def sort(wheels, columns, condense=False):
@@ -290,7 +306,7 @@ def sort(wheels, columns, condense=False):
         else:
             ret.extend([[getattr(wheel, column) for column in columns] for wheel in wheel_list])
 
-    return ret
+    return remove_duplicates(ret)
 
 
 def add_not_available_wheels(wheels, reqs, not_available_only=False):
