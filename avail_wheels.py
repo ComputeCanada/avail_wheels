@@ -66,6 +66,7 @@ class Wheel():
         self._filename = filename
         self._arch = arch
         self._name = name
+        self._namelower = name.lower()
         self._version = version
         self._build = build
         self._tags = tags
@@ -114,9 +115,9 @@ class Wheel():
     def name(self):
         return self._name
 
-    @cached_property
+    @property
     def namelower(self):
-        return self._name.lower()
+        return self._namelower
 
     @property
     def version(self):
