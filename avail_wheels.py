@@ -167,7 +167,10 @@ def is_compatible(wheel, pythons):
 
 def match_file(file, rexes):
     """ Match file with one or more regular expressions. """
-    return any(rex.match(file) for rex in rexes)
+    for rex in rexes:
+        if re.match(rex, file):
+            return True
+    return False
 
 
 def match_version(wheel, reqs):
