@@ -327,15 +327,15 @@ def get_search_paths():
     """
     if not env.pip_config_file:
         return [
-            os.path.join(root, d)
-            for root, dirs, _ in os.walk(env.wheelhouse) if root[len(env.wheelhouse):].count(os.sep) == 1
-            for d in dirs
+            level2.path
+            for level1 in os.scandir(env.wheelhouse) if level1.is_dir()
+            for level2 in os.scandir(level1.path) if level2.is_dir()
         ]
 
     cfg = configparser.ConfigParser()
     with open(env.pip_config_file) as f:
         cfg.read_file(f)
-    return cfg['wheel']['find-links'].split(' ')
+    return cfg['wheel']['find-links'].split()
 
 
 def get_requirements_set(args):
