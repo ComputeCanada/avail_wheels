@@ -362,6 +362,8 @@ def get_requirements_set(args):
         from pip._internal.req import req_file
         from pip._internal.network.session import PipSession
         import tomllib
+
+        session = PipSession()
         for fname in args.requirements:
             # Read dependencies section from local pyproject.toml
             if os.path.basename(fname) == "pyproject.toml":
@@ -374,7 +376,7 @@ def get_requirements_set(args):
                         reqs[r.name] = r
             else:
                 # assume requirements.txt file
-                for freq in req_file.parse_requirements(fname, session=PipSession()):
+                for freq in req_file.parse_requirements(fname, session=session):
                     r = make_requirement(freq.requirement)
                     reqs[r.name] = r
 
@@ -385,7 +387,7 @@ def get_requirements_set(args):
         else:
             reqs[req.name] = req
 
-    return reqs if len(reqs) != 0 else None
+    return reqs or None
 
 
 def make_eq_specifier(v):
