@@ -176,7 +176,7 @@ def is_compatible(wheel, pythons):
 def match_file(file, rexes):
     """ Match file with one or more regular expressions. """
     for rex in rexes:
-        if re.match(rex, file):
+        if rex.match(file):
             return True
     return False
 
