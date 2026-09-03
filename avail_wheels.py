@@ -162,7 +162,7 @@ def is_compatible(wheel, pythons):
     """
     Verify that the wheel tags are compatible with currently supported tags.
     """
-    return any(wheel.tags & env.compatible_tags[p] for p in pythons)
+    return any(not wheel.tags.isdisjoint(env.compatible_tags[p]) for p in pythons)
 
 
 def match_file(file, rexes):
