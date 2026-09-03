@@ -211,7 +211,7 @@ def get_wheels(paths, reqs, pythons, latest):
         for path in paths:
             arch = os.path.basename(path)
             for entry in os.scandir(path):
-                if entry.is_file() and entry.name.endswith('.whl'):
+                if entry.name.endswith('.whl'):
                     yield arch, entry.name
 
     wheels = defaultdict(list)
