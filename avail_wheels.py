@@ -14,7 +14,7 @@ import wild_requirements as requirements
 from runtime_env import RuntimeEnvironment
 from collections import defaultdict
 from itertools import chain
-from functools import cached_property
+from functools import cached_property, lru_cache
 
 
 __version__ = "3.0.0.dev"
@@ -37,6 +37,13 @@ warnings.formatwarning = __warning_on_one_line
 # The wheel filename is {distribution}-{version}([-+]{build tag})?-{python tag}-{abi tag}-{platform tag}.whl.
 # The version can be numeric, alpha or alphanum or a combinaison.
 WHEEL_RE = re.compile(r"(?P<name>.+?)-(?P<version>.+?)(-(?P<build>\d[^-]*))?-(?P<tags>.+?-.+?-.+?)\.whl")
+
+
+# Cache parsing tags. Only few (~52) occurences of tags exists accross the wheelhouse.
+# ie CacheInfo(hits=18482, misses=52, maxsize=200, currsize=52)
+@lru_cache(maxsize=200)
+def _parse_tag_cached(tag):
+    return packaging.tags.parse_tag(tag)
 
 
 class Wheel():
@@ -84,7 +91,7 @@ class Wheel():
                 name=m.group('name'),
                 version=m.group('version'),
                 build=m.group('build') or "",  # Build is optional
-                tags=packaging.tags.parse_tag(m.group('tags')),
+                tags=_parse_tag_cached(m.group('tags')),
             )
         else:
             warnings.warn(f"Could not get tags for : {filename}")
