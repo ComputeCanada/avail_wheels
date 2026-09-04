@@ -238,6 +238,11 @@ def test_latest_versions_method_all_pythons():
     assert avail_wheels.latest_versions(wheels) == latest_wheels
 
 
+def test_latest_versions_type():
+    """ Test that latest_versions method return type is a defaultdict. """
+    assert isinstance(avail_wheels.latest_versions({}), defaultdict)
+
+
 @pytest.fixture
 def to_be_sorted_wheels():
     wheels = {
@@ -1016,6 +1021,27 @@ def test_make_requirement_localversion():
     assert avail_wheels.make_requirement("name") == Requirement("name")
     assert avail_wheels.make_requirement("name+local") == Requirement("name")
     assert avail_wheels.make_requirement("name+a.b.c") == Requirement("name")
+
+
+def test_make_requirement_named_vcs():
+    """ Test that named VCS requirements (e.g. 'gwcs @ git+...') are accepted and name extracted. """
+    req_git = "gwcs @ git+https://github.com/spacetelescope/gwcs.git@master"
+    assert avail_wheels.make_requirement(req_git) == Requirement("gwcs")
+
+    req_main = "stcal @ git+https://github.com/spacetelescope/stcal.git@main"
+    assert avail_wheels.make_requirement(req_main) == Requirement("stcal")
+
+
+def test_make_requirement_bare_url_skipped():
+    """ Test that bare URLs without package name are warned and skipped (return None). """
+    with pytest.warns(UserWarning, match="Skipping unsupported URL requirement format"):
+        assert avail_wheels.make_requirement("git+https://github.com/spacetelescope/gwcs.git") is None
+
+    with pytest.warns(UserWarning, match="Skipping unsupported URL requirement format"):
+        assert avail_wheels.make_requirement("git+https://github.com/spacetelescope/gwcs.git@master") is None
+
+    with pytest.warns(UserWarning, match="Skipping unsupported URL requirement format"):
+        assert avail_wheels.make_requirement("https://github.com/spacetelescope/gwcs.git@master") is None
 
 
 def test_make_eq_specifier():

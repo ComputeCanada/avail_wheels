@@ -26,6 +26,7 @@ HEADERS = ['name', 'version', 'python', 'arch']
 
 DEFAULT_STAR_ARG = ['*']
 
+VCS_SCHEMES = ("git+", "hg+", "svn+", "bzr+", "https://", "http://", "file://")
 
 def __warning_on_one_line(message, category, filename=None, lineno=None, file=None, line=None):
     return f'{category.__name__}: {message}\n'
@@ -247,7 +248,7 @@ def latest_versions(wheels):
     """
     Returns only the latest version of each wheel.
     """
-    latests = {}
+    latests = defaultdict(list)
 
     for wheel_name, wheel_list in wheels.items():
         latest = max(w.version for w in wheel_list)
@@ -383,19 +384,22 @@ def get_requirements_set(args):
                     # https://packaging.python.org/en/latest/guides/writing-pyproject-toml/#dependencies-and-requirements
                     for freq in pyproject['project'].get('dependencies', []):
                         r = make_requirement(freq)
-                        reqs[r.name] = r
+                        if r is not None:
+                            reqs[r.name] = r
             else:
                 # assume requirements.txt file
                 for freq in req_file.parse_requirements(fname, session=session):
                     r = make_requirement(freq.requirement)
-                    reqs[r.name] = r
+                    if r is not None:
+                        reqs[r.name] = r
 
     # Then add requirements from the command line so they are prioritize.
     for req in chain(args.wheel, args.name):
-        if args.specifier:
-            reqs[req.name] = requirements.Requirement(f"{req.name}{args.specifier}")
-        else:
-            reqs[req.name] = req
+        if req is not None:
+            if args.specifier:
+                reqs[req.name] = requirements.Requirement(f"{req.name}{args.specifier}")
+            else:
+                reqs[req.name] = req
 
     return reqs or None
 
@@ -411,7 +415,22 @@ def make_eq_specifier(v):
 
 def make_requirement(r):
     """
+    Parse a requirement string.
+    Accepts standard requirements and named VCS dependencies (eg 'gwcs @ git+...').
+    Warns and skips bare URLs or unsupported formats lacking an explicit package name.
     """
+    r = r.strip()
+
+    # Warn and skip bare URLs, VCS without package name (eg 'git+https://...', 'https://...git@master')
+    if r.startswith(VCS_SCHEMES):
+        warnings.warn(f"Skipping unsupported URL requirement format: {r!r}")
+        return None
+
+    # Accept named VCS / direct reference (eg 'gwcs @ git+https://...')
+    if "@" in r:
+        name, _, _ = r.partition("@")
+        r = name.strip()
+
     try:
         # Partition requirement on '+'.
         # This is useful for requirements like jaxlib==0.4.20+cuda12.cudnn89.computecanada which contains name, version and local version.
