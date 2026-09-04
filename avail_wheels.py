@@ -214,9 +214,10 @@ def get_wheels(paths, reqs, pythons, latest):
         """
         for path in paths:
             arch = os.path.basename(path)
-            for entry in os.scandir(path):
-                if entry.name.endswith('.whl'):
-                    yield arch, entry.name
+            with os.scandir(path) as entries:
+                for entry in entries:
+                    if entry.name.endswith('.whl'):
+                        yield arch, entry.name
 
     wheels = defaultdict(list)
     python_tags = frozenset().union(*(env.compatible_tags[p] for p in pythons))
