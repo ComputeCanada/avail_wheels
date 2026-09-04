@@ -273,39 +273,25 @@ def sort(wheels, columns, condense=False):
     Transforms dict of wheels to a list of lists
     where the columns are the wheel tags.
     """
-
-    def loose_key(x):
-        """
-        Everything and nothing can be a version, loosely!
-        """
-        return packaging.version.parse(x)
-
     ret = []
     sep = ", "
+    loose_key = packaging.version.parse # Everything and nothing can be a version, loosely!
 
     # Sort in-place, by name insensitively asc, then by version desc, then by arch desc, then by python desc
     # Since the sort is stable and Timsort can benefit from previous sort, this is fast.
-    wheel_names = sorted(wheels.keys(), key=lambda s: s.casefold())
+    wheel_names = sorted(wheels.keys(), key=str.casefold)
     for wheel_name in wheel_names:
         wheel_list = wheels[wheel_name]
-        wheel_list.sort(key=lambda x: loose_key(x.python), reverse=True)
-        wheel_list.sort(key=operator.attrgetter('arch'), reverse=True)
-        wheel_list.sort(key=operator.attrgetter('loose_version'), reverse=True)
+        wheel_list.sort(key=lambda x: (x.loose_version, x.arch, loose_key(x.python)), reverse=True)
 
         # Condense wheel information on one line.
         # For every column, every wheel, insert the tag into a uniq set, then join tag values and re-sort.
         # Otherwise, get the columns.
         if condense:
-            row = []
-            dwheel = {}
-            for column in columns:
-                dwheel[column] = set()
-
-                for wheel in wheel_list:
-                    dwheel[column].add(getattr(wheel, column))
-
-                row.append(sep.join(sorted(dwheel.get(column), key=loose_key, reverse=True)))
-
+            row = [
+                sep.join(sorted({getattr(wheel, column) for wheel in wheel_list}, key=loose_key, reverse=True))
+                for column in columns
+            ]
             ret.append(row)
         else:
             ret.extend([[getattr(wheel, column) for column in columns] for wheel in wheel_list])

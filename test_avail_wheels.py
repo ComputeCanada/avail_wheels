@@ -317,6 +317,47 @@ def test_sort_condense(to_be_sorted_wheels):
     ]
 
 
+def test_sort_cpython_versions_condense():
+    """
+    Test that Python versions >= 3.10 sort numerically descending in condensed view
+    (cp311 > cp310 > cp39 > cp38) rather than alphabetically (cp39 > cp38 > cp311 > cp310).
+    """
+    wheels = {
+        "xprec": [
+            avail_wheels.Wheel.parse_wheel_filename("xprec-1.3.8-cp38-cp38-linux_x86_64.whl", "generic"),
+            avail_wheels.Wheel.parse_wheel_filename("xprec-1.3.8-cp39-cp39-linux_x86_64.whl", "generic"),
+            avail_wheels.Wheel.parse_wheel_filename("xprec-1.3.8-cp310-cp310-linux_x86_64.whl", "generic"),
+            avail_wheels.Wheel.parse_wheel_filename("xprec-1.3.8-cp311-cp311-linux_x86_64.whl", "generic"),
+        ]
+    }
+
+    assert avail_wheels.sort(wheels, ["name", "version", "python", "arch"], condense=True) == [
+        ["xprec", "1.3.8", "cp311, cp310, cp39, cp38", "generic"]
+    ]
+
+
+def test_sort_cpython_versions_columns():
+    """
+    Test that Python versions >= 3.10 sort numerically descending across rows
+    when condense=False.
+    """
+    wheels = {
+        "xprec": [
+            avail_wheels.Wheel.parse_wheel_filename("xprec-1.3.8-cp38-cp38-linux_x86_64.whl", "generic"),
+            avail_wheels.Wheel.parse_wheel_filename("xprec-1.3.8-cp39-cp39-linux_x86_64.whl", "generic"),
+            avail_wheels.Wheel.parse_wheel_filename("xprec-1.3.8-cp310-cp310-linux_x86_64.whl", "generic"),
+            avail_wheels.Wheel.parse_wheel_filename("xprec-1.3.8-cp311-cp311-linux_x86_64.whl", "generic"),
+        ]
+    }
+
+    assert avail_wheels.sort(wheels, ["name", "version", "python", "arch"], condense=False) == [
+        ["xprec", "1.3.8", "cp311", "generic"],
+        ["xprec", "1.3.8", "cp310", "generic"],
+        ["xprec", "1.3.8", "cp39", "generic"],
+        ["xprec", "1.3.8", "cp38", "generic"],
+    ]
+
+
 # TODO: Add test for PIP_CONFIG_FILE=""
 def test_get_wheels_all_archs_all_pythons(wheelhouse):
     """ Test that get wheels returns wheels for all arch and all pythons. """
