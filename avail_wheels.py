@@ -10,6 +10,7 @@ import warnings
 import configparser
 from tabulate import tabulate, tabulate_formats
 import packaging
+from packaging.utils import canonicalize_name
 import wild_requirements as requirements
 from runtime_env import RuntimeEnvironment
 from collections import defaultdict
@@ -39,6 +40,8 @@ warnings.formatwarning = __warning_on_one_line
 # The version can be numeric, alpha or alphanum or a combinaison.
 WHEEL_RE = re.compile(r"(?P<name>.+?)-(?P<version>.+?)(-(?P<build>\d[^-]*))?-(?P<tags>.+?-.+?-.+?)\.whl")
 
+# Substitute regex for to condense numerous - _ . into one [-_.]
+NAMESEP_RE = re.compile(r"[-_.]+")
 
 # Cache parsing tags. Only few (~52) occurences of tags exists accross the wheelhouse.
 # ie CacheInfo(hits=18482, misses=52, maxsize=200, currsize=52)
@@ -120,6 +123,10 @@ class Wheel():
     def namelower(self):
         return self._namelower
 
+    @cached_property
+    def canonical_name(self):
+        return canonicalize_name(self.name)
+
     @property
     def version(self):
         return self.loose_version.public
@@ -188,10 +195,10 @@ def match_version(wheel, reqs):
     Match an exact requirements or a wild requirements.
     When a requirements has no specifiers, it automatically match.
     """
-    if wheel.namelower in reqs:
-        return wheel.version in reqs[wheel.namelower].specifier
+    if wheel.canonical_name in reqs:
+        return wheel.version in reqs[wheel.canonical_name].specifier
     else:
-        return any(re.match(fnmatch.translate(req_name), wheel.namelower, re.IGNORECASE) and wheel.version in req.specifier for req_name, req in reqs.items())
+        return any(re.match(fnmatch.translate(canonicalize_name(req_name)), wheel.canonical_name, re.IGNORECASE) and wheel.version in req.specifier for req_name, req in reqs.items())
 
 
 def get_rexes(reqs):
@@ -200,7 +207,11 @@ def get_rexes(reqs):
     Supports exact matching and globbing of name.
     pattern: name-*.whl
     """
-    return [re.compile(fnmatch.translate(f"{req}-*.whl"), re.IGNORECASE) for req in reqs]
+    return [
+        # Replace -, _, . with [-_.] so it matches any separator on disk
+        re.compile(fnmatch.translate(f"{NAMESEP_RE.sub('[-_.]', req)}-*.whl"), re.IGNORECASE)
+        for req in reqs
+    ]
 
 
 def get_wheels(paths, reqs, pythons, latest):
@@ -231,14 +242,14 @@ def get_wheels(paths, reqs, pythons, latest):
             if match_file(file, rexes):
                 wheel = parse_wheel(file, arch)
                 if is_compatible(wheel, python_tags) and match_version(wheel, reqs):
-                    wheels[wheel.namelower].append(wheel)
+                    wheels[wheel.canonical_name].append(wheel)
 
     # Display all available wheels that are compatible (no reqs were given)
     else:
         for arch, file in _get_wheels_from_fs(paths):
             wheel = parse_wheel(file, arch)
             if is_compatible(wheel, python_tags):
-                wheels[wheel.namelower].append(wheel)
+                wheels[wheel.canonical_name].append(wheel)
 
     # Filter versions
     return latest_versions(wheels) if latest else wheels
@@ -311,6 +322,7 @@ def add_not_available_wheels(wheels, reqs, not_available_only=False):
     ret = defaultdict(list) if not_available_only else wheels
 
     for wheel in reqs:
+        wheel = canonicalize_name(wheel)
         # Do not duplicate and add names that translate to an already present name.
         if wheel not in wheels and all(not re.match(fnmatch.translate(wheel), w) for w in wheels.keys()):
             ret[wheel].append(Wheel(filename=wheel, name=wheel))
@@ -385,21 +397,21 @@ def get_requirements_set(args):
                     for freq in pyproject['project'].get('dependencies', []):
                         r = make_requirement(freq)
                         if r is not None:
-                            reqs[r.name] = r
+                            reqs[canonicalize_name(r.name)] = r
             else:
                 # assume requirements.txt file
                 for freq in req_file.parse_requirements(fname, session=session):
                     r = make_requirement(freq.requirement)
                     if r is not None:
-                        reqs[r.name] = r
+                        reqs[canonicalize_name(r.name)] = r
 
     # Then add requirements from the command line so they are prioritize.
     for req in chain(args.wheel, args.name):
         if req is not None:
             if args.specifier:
-                reqs[req.name] = requirements.Requirement(f"{req.name}{args.specifier}")
+                reqs[canonicalize_name(req.name)] = requirements.Requirement(f"{req.name}{args.specifier}")
             else:
-                reqs[req.name] = req
+                reqs[canonicalize_name(req.name)] = req
 
     return reqs or None
 

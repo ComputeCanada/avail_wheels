@@ -377,7 +377,7 @@ def test_get_wheels_all_archs_all_pythons(wheelhouse):
             avail_wheels.Wheel.parse_wheel_filename("scipy-1.1.0-cp35-cp35m-linux_x86_64.whl", "generic"),
             avail_wheels.Wheel.parse_wheel_filename("scipy-1.1.0-cp27-cp27mu-linux_x86_64.whl", "generic"),
         ]),
-        "tensorflow_gpu": unordered([
+        "tensorflow-gpu": unordered([
             avail_wheels.Wheel.parse_wheel_filename("tensorflow_gpu-1.8.0+computecanada-cp36-cp36m-linux_x86_64.whl", "avx2"),
             avail_wheels.Wheel.parse_wheel_filename("tensorflow_gpu-1.8.0+computecanada-cp35-cp35m-linux_x86_64.whl", "avx2"),
             avail_wheels.Wheel.parse_wheel_filename("tensorflow_gpu-1.8.0+computecanada-cp27-cp27mu-linux_x86_64.whl", "avx2"),
@@ -829,8 +829,8 @@ def test_get_rexes():
     """
 
     rexes = [
-        re.compile(translate(pattern), re.IGNORECASE)
-        for pattern in ["numpy-*.whl", "Scikit-learn-*.whl"]
+        re.compile(translate(f"{re.sub(r'[-_.]+', '[-_.]', name)}-*.whl"), re.IGNORECASE)
+        for name in ["numpy", "Scikit-learn"]
     ]
     assert avail_wheels.get_rexes(["numpy", "Scikit-learn"]) == rexes
 
@@ -1066,8 +1066,8 @@ def test_get_requirements_set_requirements_file(tmp_path):
 
     assert avail_wheels.get_requirements_set(args) == {
         "numpy": Requirement("numpy"),
-        "dgl_cpu": Requirement("dgl_cpu"),
-        "ab.py": Requirement("ab.py==1.9"),
+        "dgl-cpu": Requirement("dgl_cpu"),
+        "ab-py": Requirement("ab.py==1.9"),
         "scipy": Requirement("scipy"),
         "dummy": Requirement("dummy~=4.0.0"),
     }
@@ -1087,9 +1087,9 @@ def test_get_requirements_set_requirements_file_and_names(tmp_path):
 
     assert avail_wheels.get_requirements_set(args) == {
         "torch": Requirement("torch"),
-        "dgl_cpu": Requirement("dgl_cpu==1.0"),
+        "dgl-cpu": Requirement("dgl_cpu==1.0"),
         "numpy": Requirement("numpy"),
-        "ab.py": Requirement("ab.py==1.9"),
+        "ab-py": Requirement("ab.py==1.9"),
     }
 
 
@@ -1103,8 +1103,8 @@ def test_get_requirements_set_from_names():
 
     assert avail_wheels.get_requirements_set(args) == {
         "torch": Requirement("torch"),
-        "dgl_cpu": Requirement("dgl_cpu"),
-        "ab.py": Requirement("ab.py==1.9"),
+        "dgl-cpu": Requirement("dgl_cpu"),
+        "ab-py": Requirement("ab.py==1.9"),
         "dummy": Requirement("dummy==4")
     }
 

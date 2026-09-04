@@ -94,13 +94,13 @@ def test_requirement_class():
     assert repr(req) == "<Requirement('numpy==1.0.0')>"
 
     req = requirements.Requirement("SpaCy-metrics!=1.0.0")
-    assert req.name == "spacy_metrics"
+    assert req.name == "spacy-metrics"
     assert req.specifier == "!=1.0.0"
     assert req.extras == set()
     assert req.url is None
     assert req.marker is None
-    assert str(req) == "spacy_metrics!=1.0.0"
-    assert repr(req) == "<Requirement('spacy_metrics!=1.0.0')>"
+    assert str(req) == "spacy-metrics!=1.0.0"
+    assert repr(req) == "<Requirement('spacy-metrics!=1.0.0')>"
 
 
 def test_requirement_eq():

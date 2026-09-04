@@ -22,7 +22,7 @@ from pyparsing import (  # noqa
 
 from packaging.markers import MARKER_EXPR, Marker
 from packaging.specifiers import LegacySpecifier, Specifier, SpecifierSet
-
+from packaging.utils import canonicalize_name
 
 class InvalidRequirement(ValueError):
     """
@@ -112,7 +112,7 @@ class Requirement:
             )
 
         # Cannonicalize name
-        self.name = req.name.replace("-", "_").lower()  # type: str
+        self.name = canonicalize_name(req.name)
         if req.url:
             parsed_url = urllib.parse.urlparse(req.url)
             if parsed_url.scheme == "file":
