@@ -167,11 +167,11 @@ class Wheel():
         )
 
 
-def is_compatible(wheel, pythons):
+def is_compatible(wheel, python_tags):
     """
     Verify that the wheel tags are compatible with currently supported tags.
     """
-    return any(not wheel.tags.isdisjoint(env.compatible_tags[p]) for p in pythons)
+    return not wheel.tags.isdisjoint(python_tags)
 
 
 def match_file(file, rexes):
@@ -219,20 +219,21 @@ def get_wheels(paths, reqs, pythons, latest):
                     yield arch, entry.name
 
     wheels = defaultdict(list)
+    python_tags = frozenset().union(*(env.compatible_tags[p] for p in pythons))
 
     if reqs:
         rexes = get_rexes(reqs)
         for arch, file in _get_wheels_from_fs(paths):
             if match_file(file, rexes):
                 wheel = Wheel.parse_wheel_filename(file, arch)
-                if is_compatible(wheel, pythons) and match_version(wheel, reqs):
+                if is_compatible(wheel, python_tags) and match_version(wheel, reqs):
                     wheels[wheel.namelower].append(wheel)
 
     # Display all available wheels that are compatible (no reqs were given)
     else:
         for arch, file in _get_wheels_from_fs(paths):
             wheel = Wheel.parse_wheel_filename(file, arch)
-            if is_compatible(wheel, pythons):
+            if is_compatible(wheel, python_tags):
                 wheels[wheel.namelower].append(wheel)
 
     # Filter versions

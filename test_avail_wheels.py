@@ -748,7 +748,8 @@ def test_is_compatible_true(python_dirs):
     """ Test that wheel is compatible. """
     avail_wheels.env = RuntimeEnvironment()
     wheel = avail_wheels.Wheel.parse_wheel_filename("netCDF4-1.3.1-cp27-cp27mu-linux_x86_64.whl")
-    assert avail_wheels.is_compatible(wheel, ["2.7"])
+    python_tags = avail_wheels.env.compatible_tags["2.7"]
+    assert avail_wheels.is_compatible(wheel, python_tags)
 
 
 def test_is_compatible_compressed_tags_true(python_dirs):
@@ -756,24 +757,28 @@ def test_is_compatible_compressed_tags_true(python_dirs):
     avail_wheels.env = RuntimeEnvironment()
 
     wheel = avail_wheels.Wheel.parse_wheel_filename("shiboken2-5.15.0-5.15.0-cp35.cp36.cp37.cp38-abi3-linux_x86_64.whl")
-    assert avail_wheels.is_compatible(wheel, ["3.8"])
+    python_tags = avail_wheels.env.compatible_tags["3.8"]
+    assert avail_wheels.is_compatible(wheel, python_tags)
 
     wheel = avail_wheels.Wheel.parse_wheel_filename("pydicom-1.1.0-1-py2.py3-none-any.whl")
-    assert avail_wheels.is_compatible(wheel, ["3.9"])
+    python_tags = avail_wheels.env.compatible_tags["3.9"]
+    assert avail_wheels.is_compatible(wheel, python_tags)
 
 
 def test_is_compatible_false(python_dirs):
     """ Test that wheel is not compatible for a given python. """
     avail_wheels.env = RuntimeEnvironment()
     wheel = avail_wheels.Wheel.parse_wheel_filename("netCDF4-1.3.1-cp39-cp39-linux_x86_64.whl")
-    assert not avail_wheels.is_compatible(wheel, ["2.7"])
+    python_tags = avail_wheels.env.compatible_tags["2.7"]
+    assert not avail_wheels.is_compatible(wheel, python_tags)
 
 
 def test_is_compatible_many(python_dirs):
     """ Test that wheel is compatible for many given python. """
     avail_wheels.env = RuntimeEnvironment()
     wheel = avail_wheels.Wheel.parse_wheel_filename("netCDF4-1.3.1-cp27-cp27mu-linux_x86_64.whl")
-    assert avail_wheels.is_compatible(wheel, ["2.7", "3.8"])
+    python_tags = frozenset().union(*(avail_wheels.env.compatible_tags[p] for p in ["2.7", "3.8"]))
+    assert avail_wheels.is_compatible(wheel, python_tags)
 
 
 def test_match_file_sensitive_true():
