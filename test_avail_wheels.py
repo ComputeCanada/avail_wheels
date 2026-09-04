@@ -243,6 +243,65 @@ def test_latest_versions_type():
     assert isinstance(avail_wheels.latest_versions({}), defaultdict)
 
 
+def test_latest_versions_semantic_versioning():
+    """
+    Test that latest_versions uses PEP 440 semantic version comparison rather than
+    alphabetical string sorting when version numbers cross decimal / digit boundaries:
+      - cf_xarray: 0.10.11 > 0.9.5  (string comparison incorrectly picks 0.9.5)
+      - botocore:  1.42.49 > 1.9.5   (string comparison incorrectly picks 1.9.5)
+      - boto3:     1.42.30 > 1.9.86  (string comparison incorrectly picks 1.9.86)
+    """
+    wheels = {
+        "cf_xarray": [
+            avail_wheels.Wheel.parse_wheel_filename("cf_xarray-0.9.5+computecanada-py3-none-any.whl", "generic"),
+            avail_wheels.Wheel.parse_wheel_filename("cf_xarray-0.10.11+computecanada-py3-none-any.whl", "generic"),
+        ],
+        "botocore": [
+            avail_wheels.Wheel.parse_wheel_filename("botocore-1.9.5+computecanada-py2.py3-none-any.whl", "generic"),
+            avail_wheels.Wheel.parse_wheel_filename("botocore-1.10.63+computecanada-py2.py3-none-any.whl", "generic"),
+            avail_wheels.Wheel.parse_wheel_filename("botocore-1.42.49+computecanada-py3-none-any.whl", "generic"),
+        ],
+        "boto3": [
+            avail_wheels.Wheel.parse_wheel_filename("boto3-1.9.86+computecanada-py2.py3-none-any.whl", "generic"),
+            avail_wheels.Wheel.parse_wheel_filename("boto3-1.9.235+computecanada-py2.py3-none-any.whl", "generic"),
+            avail_wheels.Wheel.parse_wheel_filename("boto3-1.42.30+computecanada-py3-none-any.whl", "generic"),
+        ],
+    }
+
+    expected = {
+        "cf_xarray": [
+            avail_wheels.Wheel.parse_wheel_filename("cf_xarray-0.10.11+computecanada-py3-none-any.whl", "generic"),
+        ],
+        "botocore": [
+            avail_wheels.Wheel.parse_wheel_filename("botocore-1.42.49+computecanada-py3-none-any.whl", "generic"),
+        ],
+        "boto3": [
+            avail_wheels.Wheel.parse_wheel_filename("boto3-1.42.30+computecanada-py3-none-any.whl", "generic"),
+        ],
+    }
+
+    assert avail_wheels.latest_versions(wheels) == expected
+
+
+def test_latest_versions_preserves_multiple_wheels_at_latest_version():
+    """
+    Test that when the latest semantic version has builds for multiple Python tags
+    or architectures, all matching wheels are preserved.
+    """
+    wheels = {
+        "botocore": [
+            avail_wheels.Wheel.parse_wheel_filename("botocore-1.9.5+computecanada-py2.py3-none-any.whl", "generic"),
+            avail_wheels.Wheel.parse_wheel_filename("botocore-1.42.49+computecanada-cp38-cp38-linux_x86_64.whl", "generic"),
+            avail_wheels.Wheel.parse_wheel_filename("botocore-1.42.49+computecanada-cp39-cp39-linux_x86_64.whl", "generic"),
+        ]
+    }
+    latests = avail_wheels.latest_versions(wheels)
+
+    assert len(latests["botocore"]) == 2
+    assert {w.python for w in latests["botocore"]} == {"cp38", "cp39"}
+    assert all(w.version == "1.42.49" for w in latests["botocore"])
+
+
 @pytest.fixture
 def to_be_sorted_wheels():
     wheels = {

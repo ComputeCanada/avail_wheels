@@ -262,8 +262,8 @@ def latest_versions(wheels):
     latests = defaultdict(list)
 
     for wheel_name, wheel_list in wheels.items():
-        latest = max(w.version for w in wheel_list)
-        latests[wheel_name] = [w for w in wheel_list if w.version == latest]
+        latest = max(w.loose_version for w in wheel_list)
+        latests[wheel_name] = [w for w in wheel_list if w.loose_version == latest]
 
     return latests
 
