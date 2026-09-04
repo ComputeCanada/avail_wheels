@@ -40,10 +40,15 @@ COMMA = L(",").suppress()
 SEMICOLON = L(";").suppress()
 AT = L("@").suppress()
 
-PUNCTUATION = Word("-_.")
+# Force punctuation to match exactly 1 character at a time
+PUNCTUATION = Word("-_.", exact=1)
 WILDCARD = Word("*")
-IDENTIFIER_END = ALPHANUM | (ZeroOrMore(PUNCTUATION) + ALPHANUM)
-IDENTIFIER = Combine(ZeroOrMore(WILDCARD) + ALPHANUM + ZeroOrMore(PUNCTUATION | WILDCARD) + ZeroOrMore(IDENTIFIER_END))
+# Combine alphanumeric and wildcard characters into a single greedy matcher
+IDENTIFIER_BASE = Word(string.ascii_letters + string.digits + "*")
+# Strictly alternate between Base and Punctuation (removing the buggy 'Optional')
+IDENTIFIER = Combine(IDENTIFIER_BASE + ZeroOrMore(PUNCTUATION + IDENTIFIER_BASE))
+# Reject purely wildcard strings ("*", "**", etc.)
+IDENTIFIER.addCondition(lambda s, l, t: set(t[0]) != {"*"})
 
 NAME = IDENTIFIER("name")
 EXTRA = IDENTIFIER

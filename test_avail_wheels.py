@@ -1010,9 +1010,9 @@ def test_make_requirement_wildname_version():
 def test_make_requirement_invalid():
     """ Test that an exception is raise when an invalid requirement is given """
     with pytest.raises(Exception):
-        avail_wheels.make_requirement("*na*e*")
-
-    with pytest.raises(Exception):
+        avail_wheels.make_requirement("pennylane-*-")
+        avail_wheels.make_requirement("climlab--radiation")
+        avail_wheels.make_requirement("--")
         avail_wheels.make_requirement("*")
 
 

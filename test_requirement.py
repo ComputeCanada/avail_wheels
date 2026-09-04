@@ -1,61 +1,80 @@
 import pytest
 import wild_requirements as requirements
 
+VERSIONS = [
+    "",  # Tests unversioned requirements
+    "==1",
+    "==1.0",
+    "==1.0.0",
+    "===1.0.0",
+    "<1.0.0",
+    "<=1.0.0",
+    ">1.0.0",
+    ">=1.0.0",
+    "~=1.0.0",
+    "==1.0.*",
+    "==1.*",
+    "==*",
+    ">=1.26,<3",        # Version range with upper/lower bounds
+    ">=1.26, !=2.0.0",  # Version range with exclusion and spacing
+]
 
-@pytest.mark.parametrize("req", [
+VALID_NAMES = [
     "numpy",
     "NumPy",
-    "numpy==1",
-    "numpy==1.0",
-    "numpy==1.0.0",
-    "numpy===1.0.0",
-    "numpy<1.0.0",
-    "numpy<=1.0.0",
-    "numpy>1.0.0",
-    "numpy>=1.0.0",
-    "numpy~=1.0.0",
-    "numpy==1.0.*",
-    "numpy==1.*",
-    "numpy==*",
-])
-def test_grammar_valid_requirement(req):
-    """
-    Test valid requirement against the grammar.
-    """
-    requirements.REQUIREMENT.parse_string(req)
+    "climlab_cam3_radiation",
+]
 
-
-@pytest.mark.parametrize("req", [
+WILDCARD_NAMES = [
     "numpy*",
     "*numpy*",
-    "numpy*==1.0",
-    "*numpy*==1.0.0",
-    "*numpy*==1.0.*",
     "numpy_*",
     "numpy-*",
     "*numpy-*",
     "*numpy*-*",
-])
-def test_grammar_wild_requirement(req):
-    """
-    Test valid wild (*) requirement against the grammar.
-    """
-    requirements.REQUIREMENT.parse_string(req)
+    "climlab_cam3_*",
+    "climlab_cam3*",
+    "climlab_*_*",
+    "*_*_*",
+    "climlab*",
+    "climlab-*",
+    "climlab*_cam3*",
+    "*_cam3_*",
+    "*cam3*",
+    "*_cam3_radiation",
+    "*_*_radiation",
+    "*_*radiation",
+    "*radiation",
+    "*-gpu",
+]
 
-
-@pytest.mark.parametrize("req", [
+INVALID_NAMES = [
     "nu!mpy",
-    "*num*py*",
     "(numpy)",
     "[numpy]",
-    "*numpy*cli-*",
-])
-def test_grammar_invalid_requirement(req):
-    """
-    Test invalid requirement against the grammar.
-    """
+    "*",                  # Pure wildcard rejected by `.addCondition()`
+    "pennylane-*-",       # Trailing punctuation
+    "-*gpu",              # Leading punctuation
+    "climlab--radiation", # Consecutive punctuation
+    "--",                 # Pure punctuation / leading punctuation
+]
+
+
+@pytest.mark.parametrize("version", VERSIONS)
+@pytest.mark.parametrize("name", VALID_NAMES + WILDCARD_NAMES)
+def test_grammar_valid_requirement(name, version):
+    """Test valid names and wildcard names with all version combinations."""
+    req_str = f"{name}{version}"
+    requirements.REQUIREMENT.parseString(req_str)
+
+
+@pytest.mark.parametrize("version", VERSIONS)
+@pytest.mark.parametrize("name", INVALID_NAMES)
+def test_grammar_invalid_requirement(name, version):
+    """Test invalid names fail across all version combinations."""
+    req_str = f"{name}{version}"
     with pytest.raises(Exception):
-        requirements.REQUIREMENT.parse_string(req)
+        requirements.REQUIREMENT.parseString(req_str)
 
 
 def test_requirement_class():
