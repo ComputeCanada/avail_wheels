@@ -1355,6 +1355,17 @@ def test_make_requirement_wildname_version_ranges():
     assert avail_wheels.make_requirement("*name*(>=1.2, <2.0)") == Requirement("*name*(>=1.2, <2.0)")
 
 
+def test_make_requirement_spaces_in_specifier():
+    """ Test that requirements with spaces around specifier operators are parsed correctly. """
+    assert avail_wheels.make_requirement("requests >= 2.26.0") == Requirement("requests>=2.26.0")
+    assert avail_wheels.make_requirement("numba == 0.65.0") == Requirement("numba==0.65.0")
+    assert avail_wheels.make_requirement("torchcodec >= 0.14") == Requirement("torchcodec>=0.14")
+    assert avail_wheels.make_requirement("numpy < 2") == Requirement("numpy<2")
+    assert avail_wheels.make_requirement("numpy > 2") == Requirement("numpy>2")
+    assert avail_wheels.make_requirement("requests >= 2.26.0, < 3.0.0") == Requirement("requests>=2.26.0,<3.0.0")
+    assert avail_wheels.make_requirement("package >= 1.0.0 ; python_version >= '3.8'") == Requirement("package>=1.0.0; python_version >= '3.8'")
+
+
 def test_make_requirement_invalid():
     """ Test that an exception is raise when an invalid requirement is given """
     with pytest.raises(Exception):
@@ -1437,6 +1448,37 @@ def test_get_requirements_set_requirements_file(tmp_path):
         "ab-py": Requirement("ab.py==1.9"),
         "scipy": Requirement("scipy"),
         "dummy": Requirement("dummy~=4.0.0"),
+    }
+
+
+def test_get_requirements_set_requirements_file_spaces_in_specifier(tmp_path):
+    """
+    Test parsing requirements files with whitespace around operators (e.g. 'requests >= 2.26.0').
+    """
+    p = tmp_path / "reqs.txt"
+    p.write_text("\n".join([
+        "requests >= 2.26.0",
+        "numba == 0.65.0",
+        "torchcodec >= 0.14",
+    ]))
+
+    args = avail_wheels.create_argparser().parse_args(["--requirement", str(p)])
+
+    assert avail_wheels.get_requirements_set(args) == {
+        "requests": Requirement("requests>=2.26.0"),
+        "numba": Requirement("numba==0.65.0"),
+        "torchcodec": Requirement("torchcodec>=0.14"),
+    }
+
+
+def test_get_requirements_set_cli_args_spaces_in_specifier():
+    """
+    Test command-line positional arguments with spaces in specifiers (e.g. 'numpy < 2', 'numpy > 2').
+    """
+    args = avail_wheels.create_argparser().parse_args(["numpy < 2", "scipy > 1.10"])
+    assert avail_wheels.get_requirements_set(args) == {
+        "numpy": Requirement("numpy<2"),
+        "scipy": Requirement("scipy>1.10"),
     }
 
 

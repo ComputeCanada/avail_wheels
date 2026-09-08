@@ -17,6 +17,11 @@ VERSIONS = [
     "==*",
     ">=1.26,<3",        # Version range with upper/lower bounds
     ">=1.26, !=2.0.0",  # Version range with exclusion and spacing
+    ">= 2.26.0",        # Version with space between operator and version
+    "== 0.65.0",        # Version with space between operator and version
+    ">= 2.26.0, < 3.0.0",  # Compound range with spaces
+    "< 2",              # Single digit upper bound with space
+    "> 2",              # Single digit lower bound with space
 ]
 
 VALID_NAMES = [
@@ -109,3 +114,33 @@ def test_requirement_eq():
     """
     assert requirements.Requirement("SpaCy-metrics!=1.0.0") == requirements.Requirement("SpaCy-metrics!=1.0.0")
     assert requirements.Requirement("SpaCy-metrics!=1.0.0") != requirements.Requirement("SpaCy-metrics!=1.1.0")
+
+
+def test_requirement_with_spaces_in_specifier():
+    """Test requirements with whitespace around operators."""
+    req = requirements.Requirement("requests >= 2.26.0")
+    assert req.name == "requests"
+    assert req.specifier == ">=2.26.0"
+    assert str(req) == "requests>=2.26.0"
+
+    req = requirements.Requirement("numba == 0.65.0")
+    assert req.name == "numba"
+    assert req.specifier == "==0.65.0"
+
+    req = requirements.Requirement("torchcodec >= 0.14")
+    assert req.name == "torchcodec"
+    assert req.specifier == ">=0.14"
+
+    req = requirements.Requirement("requests >= 2.26.0, < 3.0.0")
+    assert req.name == "requests"
+    assert req.specifier == "<3.0.0,>=2.26.0"
+
+    req = requirements.Requirement("numpy < 2")
+    assert req.name == "numpy"
+    assert req.specifier == "<2"
+    assert str(req) == "numpy<2"
+
+    req = requirements.Requirement("numpy > 2")
+    assert req.name == "numpy"
+    assert req.specifier == ">2"
+    assert str(req) == "numpy>2"

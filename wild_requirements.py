@@ -60,7 +60,7 @@ EXTRAS = (LBRACKET + Optional(EXTRAS_LIST) + RBRACKET)("extras")
 
 SPECIFIER_OP = Regex(r"===|==|!=|<=|>=|~=|<|>")
 SPECIFIER_VER = Word(string.ascii_letters + string.digits + ".-_+*")
-VERSION_ONE = Combine(SPECIFIER_OP + SPECIFIER_VER)
+VERSION_ONE = Combine(SPECIFIER_OP + SPECIFIER_VER, adjacent=False)
 
 VERSION_MANY = Combine(
     VERSION_ONE + ZeroOrMore(COMMA + VERSION_ONE), joinString=",", adjacent=False
