@@ -20,8 +20,8 @@ from pyparsing import (  # noqa
     stringStart,
 )
 
-from packaging.markers import MARKER_EXPR, Marker
-from packaging.specifiers import LegacySpecifier, Specifier, SpecifierSet
+from packaging.markers import Marker, InvalidMarker
+from packaging.specifiers import Specifier, SpecifierSet, InvalidSpecifier
 from packaging.utils import canonicalize_name
 
 class InvalidRequirement(ValueError):
@@ -59,10 +59,10 @@ URL = AT + URI
 EXTRAS_LIST = EXTRA + ZeroOrMore(COMMA + EXTRA)
 EXTRAS = (LBRACKET + Optional(EXTRAS_LIST) + RBRACKET)("extras")
 
-VERSION_PEP440 = Regex(Specifier._regex_str, re.VERBOSE | re.IGNORECASE)
-VERSION_LEGACY = Regex(LegacySpecifier._regex_str, re.VERBOSE | re.IGNORECASE)
+SPECIFIER_OP = Regex(r"===|==|!=|<=|>=|~=|<|>")
+SPECIFIER_VER = Word(string.ascii_letters + string.digits + ".-_+*")
+VERSION_ONE = Combine(SPECIFIER_OP + SPECIFIER_VER)
 
-VERSION_ONE = VERSION_PEP440 ^ VERSION_LEGACY
 VERSION_MANY = Combine(
     VERSION_ONE + ZeroOrMore(COMMA + VERSION_ONE), joinString=",", adjacent=False
 )("_raw_spec")
@@ -72,12 +72,9 @@ _VERSION_SPEC.setParseAction(lambda s, l, t: t._raw_spec or "")
 VERSION_SPEC = originalTextFor(_VERSION_SPEC)("specifier")
 VERSION_SPEC.setParseAction(lambda s, l, t: t[1])
 
-MARKER_EXPR = originalTextFor(MARKER_EXPR())("marker")
-MARKER_EXPR.setParseAction(
-    lambda s, l, t: Marker(s[t._original_start: t._original_end])
-)
 MARKER_SEPARATOR = SEMICOLON
-MARKER = MARKER_SEPARATOR + MARKER_EXPR
+MARKER_RAW = Regex(r"[^;\n\r]+").setParseAction(lambda s, l, t: Marker(t[0].strip()))("marker")
+MARKER = MARKER_SEPARATOR + MARKER_RAW
 
 VERSION_AND_MARKER = VERSION_SPEC + Optional(MARKER)
 URL_AND_MARKER = URL + Optional(MARKER)

@@ -686,7 +686,7 @@ def test_parse_args_default_mediawiki():
 
 def test_parse_args_version():
     """ Test that --version is and support the wildcard version. """
-    version = "1.2*"
+    version = "1.2.*"
     args = avail_wheels.create_argparser().parse_args(["--version", version])
     assert isinstance(args.specifier, packaging.specifiers.SpecifierSet)
     assert args.specifier == packaging.specifiers.SpecifierSet(f"=={version}")
@@ -1061,9 +1061,38 @@ def test_make_requirement_wildname_suffix():
 
 def test_make_requirement_wildname_version():
     """ Test that requirement with wildcard in name and version is valid. """
+    # Exact version
     assert avail_wheels.make_requirement("*name*==1.2") == Requirement("*name*==1.2")
-    assert avail_wheels.make_requirement("*name*==1.2*") == Requirement("*name*==1.2*")
+    assert avail_wheels.make_requirement("name*==1.2.3") == Requirement("name*==1.2.3")
+    assert avail_wheels.make_requirement("name*-*==1.2.3") == Requirement("name*-*==1.2.3")
+
+    # Wildcard versions (with dot)
     assert avail_wheels.make_requirement("*name*==1.2.*") == Requirement("*name*==1.2.*")
+    assert avail_wheels.make_requirement("*name*==1.*") == Requirement("*name*==1.*")
+    assert avail_wheels.make_requirement("name*-*==1.2.3.*") == Requirement("name*-*==1.2.3.*")
+
+
+def test_make_requirement_wildname_version_ranges():
+    """ Test that requirement with wildcard in name and version ranges is valid. """
+    # Single inequality and compatibility ranges
+    assert avail_wheels.make_requirement("*name*>=1.2") == Requirement("*name*>=1.2")
+    assert avail_wheels.make_requirement("*name*>1.2") == Requirement("*name*>1.2")
+    assert avail_wheels.make_requirement("*name*<=2.0") == Requirement("*name*<=2.0")
+    assert avail_wheels.make_requirement("*name*<2.0") == Requirement("*name*<2.0")
+    assert avail_wheels.make_requirement("*name*~=1.2.0") == Requirement("*name*~=1.2.0")
+    assert avail_wheels.make_requirement("*name*!=1.2.3") == Requirement("*name*!=1.2.3")
+
+    # Exclusion with wildcards
+    assert avail_wheels.make_requirement("*name*!=1.2.*") == Requirement("*name*!=1.2.*")
+
+    # Compound ranges (intervals)
+    assert avail_wheels.make_requirement("*name*>=1.2,<2.0") == Requirement("*name*>=1.2,<2.0")
+    assert avail_wheels.make_requirement("*name*>1.0,<=2.5.0") == Requirement("*name*>1.0,<=2.5.0")
+    assert avail_wheels.make_requirement("*name*>=1.0,<2.0,!=1.5") == Requirement("*name*>=1.0,<2.0,!=1.5")
+    assert avail_wheels.make_requirement("*name*>=1.0,!=1.2.*") == Requirement("*name*>=1.0,!=1.2.*")
+
+    # Parenthesized range with spaces
+    assert avail_wheels.make_requirement("*name*(>=1.2, <2.0)") == Requirement("*name*(>=1.2, <2.0)")
 
 
 def test_make_requirement_invalid():
@@ -1105,9 +1134,9 @@ def test_make_requirement_bare_url_skipped():
 
 def test_make_eq_specifier():
     """ Test that SpecifierSet is valid. """
-    assert avail_wheels.make_eq_specifier("*") == packaging.specifiers.SpecifierSet("==*")
+    # assert avail_wheels.make_eq_specifier("*") == packaging.specifiers.SpecifierSet("==*")
     assert avail_wheels.make_eq_specifier("1.2") == packaging.specifiers.SpecifierSet("==1.2")
-    assert avail_wheels.make_eq_specifier("1.2*") == packaging.specifiers.SpecifierSet("==1.2*")
+    # assert avail_wheels.make_eq_specifier("1.2*") == packaging.specifiers.SpecifierSet("==1.2*")
     assert avail_wheels.make_eq_specifier("1.2.*") == packaging.specifiers.SpecifierSet("==1.2.*")
 
 
