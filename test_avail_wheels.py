@@ -1434,6 +1434,29 @@ def test_get_requirements_set_from_names():
     }
 
 
+def test_get_requirements_set_from_names_with_version():
+    """
+    Test that requirements set from command line combines package names with --version.
+    """
+    args = avail_wheels.create_argparser().parse_args(["torch", "-n", "dgl-cpu", "--version", "2.0.0"])
+
+    assert avail_wheels.get_requirements_set(args) == {
+        "torch": Requirement("torch==2.0.0"),
+        "dgl-cpu": Requirement("dgl_cpu==2.0.0"),
+    }
+
+
+def test_get_requirements_set_from_names_with_wildcard_version():
+    """
+    Test that requirements set from command line combines package names with wildcard --version.
+    """
+    args = avail_wheels.create_argparser().parse_args(["numpy", "-v", "1.2.*"])
+
+    assert avail_wheels.get_requirements_set(args) == {
+        "numpy": Requirement("numpy==1.2.*"),
+    }
+
+
 def test_get_requirements_set_pyproject_toml(tmp_path):
     """
     Test that requirements set can be parsed from a local pyproject.toml file.
