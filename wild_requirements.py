@@ -2,7 +2,6 @@
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
 
-import re
 import string
 import urllib.parse
 from typing import List, Optional as TOptional, Set
@@ -20,8 +19,8 @@ from pyparsing import (  # noqa
     stringStart,
 )
 
-from packaging.markers import Marker, InvalidMarker
-from packaging.specifiers import Specifier, SpecifierSet, InvalidSpecifier
+from packaging.markers import Marker
+from packaging.specifiers import SpecifierSet
 from packaging.utils import canonicalize_name
 
 class InvalidRequirement(ValueError):

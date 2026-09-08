@@ -1,11 +1,9 @@
 #!/cvmfs/soft.computecanada.ca/custom/python/envs/avail_wheels/bin/python3
 
 import os
-import sys
 import re
 import argparse
 import fnmatch
-import operator
 import warnings
 import configparser
 from tabulate import tabulate, tabulate_formats
@@ -422,7 +420,6 @@ def get_requirements_set(args):
         from pip._internal.req import req_file
         from pip._internal.network.session import PipSession
         from urllib.parse import urlsplit
-        from urllib.request import url2pathname
         import tomllib
 
         session = PipSession()
