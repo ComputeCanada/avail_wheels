@@ -19,7 +19,7 @@ import signal
 # default UNIX signal handling for SIGPIPE globally.
 signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
-__version__ = "3.0.0.dev"
+__version__ = "3.0.0"
 
 env = RuntimeEnvironment()
 
