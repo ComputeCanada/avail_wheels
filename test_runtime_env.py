@@ -68,12 +68,16 @@ def test_current_python_variable_module(monkeypatch, input, expected):
     assert RuntimeEnvironment().current_python == expected
 
 
-@venv
-def test_current_python_variable_venv(monkeypatch):
+def test_current_python_variable_venv(monkeypatch, tmp_path):
     """
     Test that the current python version is read from VIRTUAL_ENV enviroment variable.
-    A python 3.11 virtual env is expected to exists.
+    Uses a fake virtual environment with a pyvenv.cfg file.
     """
+    fake_venv = tmp_path / "venv"
+    fake_venv.mkdir()
+    (fake_venv / "pyvenv.cfg").write_text("home = /fake/bin\nversion = 3.11.4\n")
+
+    monkeypatch.setenv("VIRTUAL_ENV", str(fake_venv))
     monkeypatch.delenv("EBVERSIONPYTHON", raising=False)
     assert RuntimeEnvironment().current_python == "3.11"
 
