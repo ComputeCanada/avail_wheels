@@ -1,5 +1,5 @@
 from io import StringIO
-from argparse import ArgumentError
+from argparse import ArgumentError, ArgumentTypeError
 from contextlib import redirect_stderr
 from fnmatch import translate
 import re
@@ -1394,10 +1394,29 @@ def test_make_requirement_bare_url_skipped():
 
 def test_make_eq_specifier():
     """ Test that SpecifierSet is valid. """
-    # assert avail_wheels.make_eq_specifier("*") == packaging.specifiers.SpecifierSet("==*")
     assert avail_wheels.make_eq_specifier("1.2") == packaging.specifiers.SpecifierSet("==1.2")
-    # assert avail_wheels.make_eq_specifier("1.2*") == packaging.specifiers.SpecifierSet("==1.2*")
     assert avail_wheels.make_eq_specifier("1.2.*") == packaging.specifiers.SpecifierSet("==1.2.*")
+
+
+@pytest.mark.parametrize("invalid_version", [
+    "invalid..version",
+    "not_a_valid_version",
+    "!",
+    "",
+    "*",
+    "a",
+    "2.1.",
+    "1.2*",
+    "*.*.*",
+    ".1.0.0"
+])
+def test_make_eq_specifier_invalid(invalid_version):
+    """
+    Test that make_eq_specifier raises ArgumentTypeError
+    when given an invalid version string (lines 469-470).
+    """
+    with pytest.raises(ArgumentTypeError, match=re.escape(f"Invalid version: {invalid_version!r}.")):
+        avail_wheels.make_eq_specifier(invalid_version)
 
 
 def test_get_requirements_set_requirements_file(tmp_path):
