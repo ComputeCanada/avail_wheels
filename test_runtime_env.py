@@ -1,6 +1,8 @@
+import runtime_env
 from runtime_env import RuntimeEnvironment
 from packaging import tags
 import os
+import subprocess
 import pytest
 
 
@@ -84,6 +86,48 @@ def test_current_python_variable_venv(monkeypatch, tmp_path):
     # Ensure virtual env python has priority
     monkeypatch.setenv("EBVERSIONPYTHON", "3.10.2")
     assert RuntimeEnvironment().current_python == "3.11"
+
+
+def test_current_python_variable_venv_missing_pyvenv_cfg(monkeypatch, tmp_path):
+    """
+    Test fallback to subprocess when VIRTUAL_ENV is set but pyvenv.cfg is missing.
+    """
+    fake_venv = tmp_path / "venv_no_cfg"
+    fake_venv.mkdir()
+
+    calls = []
+    def mock_run(cmd, text=False, capture_output=False):
+        calls.append(cmd)
+        return subprocess.CompletedProcess(cmd, returncode=0, stdout="3.9.18\n", stderr="")
+
+    monkeypatch.setattr(runtime_env, "run", mock_run)
+    monkeypatch.setenv("VIRTUAL_ENV", str(fake_venv))
+    monkeypatch.delenv("EBVERSIONPYTHON", raising=False)
+
+    assert RuntimeEnvironment().current_python == "3.9"
+    assert calls == [["python", "-c", "import platform; print(platform.python_version())"]]
+
+
+def test_current_python_variable_venv_unreadable_pyvenv_cfg(monkeypatch, tmp_path):
+    """
+    Test fallback to subprocess when VIRTUAL_ENV is set but pyvenv.cfg is unreadable (lines 73-75).
+    """
+    fake_venv = tmp_path / "venv_bad_cfg"
+    fake_venv.mkdir()
+    # Making pyvenv.cfg a directory causes open() to raise IsADirectoryError (an OSError)
+    (fake_venv / "pyvenv.cfg").mkdir()
+
+    calls = []
+    def mock_run(cmd, text=False, capture_output=False):
+        calls.append(cmd)
+        return subprocess.CompletedProcess(cmd, returncode=0, stdout="3.12.1\n", stderr="")
+
+    monkeypatch.setattr(runtime_env, "run", mock_run)
+    monkeypatch.setenv("VIRTUAL_ENV", str(fake_venv))
+    monkeypatch.delenv("EBVERSIONPYTHON", raising=False)
+
+    assert RuntimeEnvironment().current_python == "3.12"
+    assert calls == [["python", "-c", "import platform; print(platform.python_version())"]]
 
 
 def test_python_dirs_default(monkeypatch):
