@@ -234,7 +234,6 @@ def test_latest_versions_method_all_pythons():
     """
     Test that the latest version are returned.
     """
-    # TODO : test with build and local version as well
     wheels = {
         "netCDF4": [
             avail_wheels.Wheel.parse_wheel_filename("netCDF4-1.3.2-cp36-cp36m-linux_x86_64.whl", "avx2"),
@@ -249,9 +248,24 @@ def test_latest_versions_method_all_pythons():
         "torch_cpu": [
             avail_wheels.Wheel.parse_wheel_filename("torch_cpu-0.4.0-cp36-cp36m-linux_x86_64.whl", "avx2")
         ],
+        "pydicom": [
+            avail_wheels.Wheel.parse_wheel_filename("pydicom-1.1.0-1-py3-none-any.whl", "generic"),
+            avail_wheels.Wheel.parse_wheel_filename("pydicom-1.1.0-1-py2-none-any.whl", "generic"),
+            avail_wheels.Wheel.parse_wheel_filename("pydicom-0.9.9-py3-none-any.whl", "generic"),
+            avail_wheels.Wheel.parse_wheel_filename("pydicom-0.9.9-py2-none-any.whl", "generic"),
+        ],
+        "tensorflow_gpu": [
+            avail_wheels.Wheel.parse_wheel_filename("tensorflow_gpu-1.8.0+computecanada-cp36-cp36m-linux_x86_64.whl", "avx2"),
+            avail_wheels.Wheel.parse_wheel_filename("tensorflow_gpu-1.8.0+computecanada-cp35-cp35m-linux_x86_64.whl", "avx2"),
+            avail_wheels.Wheel.parse_wheel_filename("tensorflow_gpu-1.8.0+computecanada-cp27-cp27mu-linux_x86_64.whl", "avx2"),
+            avail_wheels.Wheel.parse_wheel_filename("tensorflow_gpu-1.8.0-cp36-cp36m-linux_x86_64.whl", "avx2"),
+            avail_wheels.Wheel.parse_wheel_filename("tensorflow_gpu-1.7.0+computecanada-cp36-cp36m-linux_x86_64.whl", "avx2"),
+        ],
     }
 
     wheels["netCDF4"].reverse()
+    wheels["pydicom"].reverse()
+    wheels["tensorflow_gpu"].reverse()
 
     latest_wheels = {
         "netCDF4": [
@@ -261,6 +275,15 @@ def test_latest_versions_method_all_pythons():
         ],
         "torch_cpu": [
             avail_wheels.Wheel.parse_wheel_filename("torch_cpu-0.4.0-cp36-cp36m-linux_x86_64.whl", "avx2")
+        ],
+        "pydicom": [
+            avail_wheels.Wheel.parse_wheel_filename("pydicom-1.1.0-1-py2-none-any.whl", "generic"),
+            avail_wheels.Wheel.parse_wheel_filename("pydicom-1.1.0-1-py3-none-any.whl", "generic"),
+        ],
+        "tensorflow_gpu": [
+            avail_wheels.Wheel.parse_wheel_filename("tensorflow_gpu-1.8.0+computecanada-cp27-cp27mu-linux_x86_64.whl", "avx2"),
+            avail_wheels.Wheel.parse_wheel_filename("tensorflow_gpu-1.8.0+computecanada-cp35-cp35m-linux_x86_64.whl", "avx2"),
+            avail_wheels.Wheel.parse_wheel_filename("tensorflow_gpu-1.8.0+computecanada-cp36-cp36m-linux_x86_64.whl", "avx2"),
         ],
     }
 
