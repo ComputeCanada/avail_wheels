@@ -1168,6 +1168,59 @@ def test_get_requirements_set_from_names():
     }
 
 
+def test_get_requirements_set_pyproject_toml(tmp_path):
+    """
+    Test that requirements set can be parsed from a local pyproject.toml file.
+    """
+    p = tmp_path / "pyproject.toml"
+    p.write_text("""
+[project]
+name = "myproject"
+version = "0.1.0"
+dependencies = [
+    "numpy>=1.20",
+    "scipy",
+    "dgl-cpu==1.0",
+]
+""")
+    args = avail_wheels.create_argparser().parse_args(["--requirement", str(p)])
+    assert avail_wheels.get_requirements_set(args) == {
+        "numpy": Requirement("numpy>=1.20"),
+        "scipy": Requirement("scipy"),
+        "dgl-cpu": Requirement("dgl_cpu==1.0"),
+    }
+
+
+def test_get_requirements_set_pyproject_toml_url(monkeypatch):
+    """
+    Test that requirements set can be parsed from a pyproject.toml URL.
+    """
+    toml_content = b"""
+[project]
+name = "remote-project"
+dependencies = [
+    "numpy",
+    "torch>=2.0",
+]
+"""
+    class MockResponse:
+        content = toml_content
+        text = toml_content.decode("utf-8")
+        def raise_for_status(self):
+            pass
+
+    from pip._internal.network.session import PipSession
+    monkeypatch.setattr(PipSession, "get", lambda self, url: MockResponse())
+
+    url = "https://raw.githubusercontent.com/example/repo/main/pyproject.toml"
+    args = avail_wheels.create_argparser().parse_args(["--requirement", url])
+
+    assert avail_wheels.get_requirements_set(args) == {
+        "numpy": Requirement("numpy"),
+        "torch": Requirement("torch>=2.0"),
+    }
+
+
 def test_remove_duplicates_wheel_filenames_no_duplicates():
     """Test that a list of distinct wheel filenames is preserved as-is."""
     wheels = [

@@ -384,20 +384,28 @@ def get_requirements_set(args):
         # Include here, as importing is slow!
         from pip._internal.req import req_file
         from pip._internal.network.session import PipSession
+        from urllib.parse import urlsplit
+        from urllib.request import url2pathname
         import tomllib
 
         session = PipSession()
         for fname in args.requirements:
-            # Read dependencies section from local pyproject.toml
-            if os.path.basename(fname) == "pyproject.toml":
-                with open(fname, 'rb') as f:
-                    pyproject = tomllib.load(f)
+            parsed = urlsplit(fname)
+            # Read dependencies section from local or remote pyproject.toml
+            if os.path.basename(parsed.path) == "pyproject.toml":
+                if parsed.scheme in ("http", "https"):
+                    resp = session.get(fname)
+                    resp.raise_for_status()
+                    pyproject = tomllib.loads(resp.content.decode("utf-8"))
+                else:
+                    with open(fname, 'rb') as f:
+                        pyproject = tomllib.load(f)
 
-                    # https://packaging.python.org/en/latest/guides/writing-pyproject-toml/#dependencies-and-requirements
-                    for freq in pyproject['project'].get('dependencies', []):
-                        r = make_requirement(freq)
-                        if r is not None:
-                            reqs[canonicalize_name(r.name)] = r
+                # https://packaging.python.org/en/latest/guides/writing-pyproject-toml/#dependencies-and-requirements
+                for freq in pyproject.get('project', {}).get('dependencies', []):
+                    r = make_requirement(freq)
+                    if r is not None:
+                        reqs[canonicalize_name(r.name)] = r
             else:
                 # assume requirements.txt file
                 for freq in req_file.parse_requirements(fname, session=session):
