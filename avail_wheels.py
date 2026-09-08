@@ -525,6 +525,7 @@ def create_argparser():
         "    avail_wheels 'dgl-cpu<0.6.0' -r requirements.txt",
     ])
     epilog += "\nFor more information, see: https://docs.computecanada.ca/wiki/Python#Listing_available_wheels"
+    epilog += "\n\nFor python wheels request, please contact us: https://docs.alliancecan.ca/wiki/Technical_support"
 
     parser = argparse.ArgumentParser(prog="avail_wheels",
                                      formatter_class=HelpFormatter,
