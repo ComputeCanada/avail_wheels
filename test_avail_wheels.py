@@ -798,12 +798,16 @@ def test_parse_args_default_noarch(monkeypatch):
     assert avail_wheels.create_argparser().get_default("arch") is None
 
 
-@venv
-def test_parse_args_default_python_venv(monkeypatch):
+def test_parse_args_default_python_venv(monkeypatch, tmp_path):
     """
     Test that default argument parser value for --python is provided by VIRTUAL_ENV.
-    Expects a python 3.11 virtual environment activated.
+    Uses a fake virtual environment with a pyvenv.cfg file.
     """
+    fake_venv = tmp_path / "venv"
+    fake_venv.mkdir()
+    (fake_venv / "pyvenv.cfg").write_text("home = /fake/bin\nversion = 3.11.4\n")
+
+    monkeypatch.setenv("VIRTUAL_ENV", str(fake_venv))
     monkeypatch.delenv("EBVERSIONPYTHON", raising=False)
 
     avail_wheels.env = RuntimeEnvironment()
@@ -812,12 +816,28 @@ def test_parse_args_default_python_venv(monkeypatch):
 
 def test_parse_args_default_python_module(monkeypatch):
     """ Test that default argument parser value for --python is provided by EBVERSIONPYTHON. """
-    # TODO: add test for virtual env.
     monkeypatch.delenv("VIRTUAL_ENV", raising=False)
     monkeypatch.setenv("EBVERSIONPYTHON", "3.6.10")
 
     avail_wheels.env = RuntimeEnvironment()
     assert avail_wheels.create_argparser().get_default("python") == ["3.6"]
+
+
+def test_parse_args_default_python_venv_precedence_over_module(monkeypatch, tmp_path):
+    """
+    Test that VIRTUAL_ENV has precedence over EBVERSIONPYTHON when a virtualenv
+    is activated and a module with a different Python version is loaded.
+    """
+    fake_venv = tmp_path / "venv"
+    fake_venv.mkdir()
+    (fake_venv / "pyvenv.cfg").write_text("home = /fake/bin\nversion = 3.11.4\n")
+
+    monkeypatch.setenv("VIRTUAL_ENV", str(fake_venv))
+    monkeypatch.setenv("EBVERSIONPYTHON", "3.8.2")
+
+    avail_wheels.env = RuntimeEnvironment()
+    assert avail_wheels.env.current_python == "3.11"
+    assert avail_wheels.create_argparser().get_default("python") == ["3.11"]
 
 
 @cvmfs
