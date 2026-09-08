@@ -221,6 +221,29 @@ def test_wheel_parse_tags():
         assert wheel.platform == tags[file]["platform"]
 
 
+@pytest.mark.parametrize("invalid_filename", [
+    "invalid-wheel-filename.whl",
+    "not_a_wheel.tar.gz",
+    "onlyonename.whl",
+])
+def test_wheel_parse_tags_invalid_filename(invalid_filename):
+    """
+    Test that parse_wheel_filename warns and returns a fallback Wheel
+    when the filename does not match WHEEL_RE.
+    """
+    arch = "generic"
+
+    with pytest.warns(UserWarning, match=re.escape(f"Could not get tags for : {invalid_filename}")):
+        wheel = avail_wheels.Wheel.parse_wheel_filename(filename=invalid_filename, arch=arch)
+
+    assert wheel.filename == invalid_filename
+    assert wheel.arch == arch
+    assert wheel.name == ""
+    assert wheel.version == ""
+    assert wheel.build == ""
+    assert wheel.tags == frozenset()
+
+
 def test_wheel_loose_version():
     """Test that the string repr of version is a parsed version."""
     wheel = avail_wheels.Wheel(version="1.2+cc")
