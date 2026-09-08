@@ -188,9 +188,16 @@ def test_compatible_tags(python, tag):
     platform = list(tags._generic_platforms())[0]
     other = frozenset(
         [
+            # Platform specific cpython tags
             tags.Tag(f"cp{tag}", f"cp{tag}", platform),
             tags.Tag(f"cp{tag}", "abi3", platform),
             tags.Tag(f"cp{tag}", "none", platform),
+
+            # Platform independent (any) cpython tags
+            tags.Tag(f"cp{tag}", "none", "any"),
+            tags.Tag(f"cp{tag}", "abi3", "any"),
+
+            # Pure python tag
             tags.Tag(f"py{tag}", "none", platform),
             tags.Tag("py3", "none", platform),
             tags.Tag(f"py{tag}", "none", "any"),
@@ -207,4 +214,6 @@ def test_compatible_tags(python, tag):
 
     # Test that previous compatible tags are included
     assert tags.Tag("cp38", "abi3", "linux_x86_64") in env.compatible_tags[python]
+    assert tags.Tag("cp38", "abi3", "any")          in env.compatible_tags[python]
     assert tags.Tag("py38", "none", "linux_x86_64") in env.compatible_tags[python]
+    assert tags.Tag("py38", "none", "any")          in env.compatible_tags[python]
