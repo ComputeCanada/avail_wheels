@@ -463,6 +463,9 @@ def get_requirements_set(args):
 
 def make_eq_specifier(v):
     """
+    Convert a version string into an equality SpecifierSet.
+    Supports exact versions (e.g. '1.2.0') as well as wildcard version
+    patterns (e.g. '1.2.*').
     """
     try:
         return packaging.specifiers.SpecifierSet(f"=={v}")
