@@ -1,6 +1,8 @@
+import runtime_env
 from runtime_env import RuntimeEnvironment
 from packaging import tags
 import os
+import subprocess
 import pytest
 
 
@@ -68,18 +70,64 @@ def test_current_python_variable_module(monkeypatch, input, expected):
     assert RuntimeEnvironment().current_python == expected
 
 
-@venv
-def test_current_python_variable_venv(monkeypatch):
+def test_current_python_variable_venv(monkeypatch, tmp_path):
     """
     Test that the current python version is read from VIRTUAL_ENV enviroment variable.
-    A python 3.11 virtual env is expected to exists.
+    Uses a fake virtual environment with a pyvenv.cfg file.
     """
+    fake_venv = tmp_path / "venv"
+    fake_venv.mkdir()
+    (fake_venv / "pyvenv.cfg").write_text("home = /fake/bin\nversion = 3.11.4\n")
+
+    monkeypatch.setenv("VIRTUAL_ENV", str(fake_venv))
     monkeypatch.delenv("EBVERSIONPYTHON", raising=False)
     assert RuntimeEnvironment().current_python == "3.11"
 
     # Ensure virtual env python has priority
     monkeypatch.setenv("EBVERSIONPYTHON", "3.10.2")
     assert RuntimeEnvironment().current_python == "3.11"
+
+
+def test_current_python_variable_venv_missing_pyvenv_cfg(monkeypatch, tmp_path):
+    """
+    Test fallback to subprocess when VIRTUAL_ENV is set but pyvenv.cfg is missing.
+    """
+    fake_venv = tmp_path / "venv_no_cfg"
+    fake_venv.mkdir()
+
+    calls = []
+    def mock_run(cmd, text=False, capture_output=False):
+        calls.append(cmd)
+        return subprocess.CompletedProcess(cmd, returncode=0, stdout="3.9.18\n", stderr="")
+
+    monkeypatch.setattr(runtime_env, "run", mock_run)
+    monkeypatch.setenv("VIRTUAL_ENV", str(fake_venv))
+    monkeypatch.delenv("EBVERSIONPYTHON", raising=False)
+
+    assert RuntimeEnvironment().current_python == "3.9"
+    assert calls == [["python", "-c", "import platform; print(platform.python_version())"]]
+
+
+def test_current_python_variable_venv_unreadable_pyvenv_cfg(monkeypatch, tmp_path):
+    """
+    Test fallback to subprocess when VIRTUAL_ENV is set but pyvenv.cfg is unreadable (lines 73-75).
+    """
+    fake_venv = tmp_path / "venv_bad_cfg"
+    fake_venv.mkdir()
+    # Making pyvenv.cfg a directory causes open() to raise IsADirectoryError (an OSError)
+    (fake_venv / "pyvenv.cfg").mkdir()
+
+    calls = []
+    def mock_run(cmd, text=False, capture_output=False):
+        calls.append(cmd)
+        return subprocess.CompletedProcess(cmd, returncode=0, stdout="3.12.1\n", stderr="")
+
+    monkeypatch.setattr(runtime_env, "run", mock_run)
+    monkeypatch.setenv("VIRTUAL_ENV", str(fake_venv))
+    monkeypatch.delenv("EBVERSIONPYTHON", raising=False)
+
+    assert RuntimeEnvironment().current_python == "3.12"
+    assert calls == [["python", "-c", "import platform; print(platform.python_version())"]]
 
 
 def test_python_dirs_default(monkeypatch):
@@ -173,7 +221,8 @@ def test_available_pythons_cvmfs(monkeypatch):
     Test that the default available pythons versions are from CVMFS.
     """
     monkeypatch.delenv("PYTHON_DIRS", raising=False)
-    assert RuntimeEnvironment().available_pythons == ["2.7", "3.5", "3.6", "3.7", "3.8", "3.9", "3.10", "3.11", "3.12"]
+    expected = {"2.7", "3.5", "3.6", "3.7", "3.8", "3.9", "3.10", "3.11", "3.12", "3.13", "3.14"}
+    assert expected.issubset(RuntimeEnvironment().available_pythons)
 
 
 @pytest.mark.parametrize("python,tag", [
@@ -187,9 +236,16 @@ def test_compatible_tags(python, tag):
     platform = list(tags._generic_platforms())[0]
     other = frozenset(
         [
+            # Platform specific cpython tags
             tags.Tag(f"cp{tag}", f"cp{tag}", platform),
             tags.Tag(f"cp{tag}", "abi3", platform),
             tags.Tag(f"cp{tag}", "none", platform),
+
+            # Platform independent (any) cpython tags
+            tags.Tag(f"cp{tag}", "none", "any"),
+            tags.Tag(f"cp{tag}", "abi3", "any"),
+
+            # Pure python tag
             tags.Tag(f"py{tag}", "none", platform),
             tags.Tag("py3", "none", platform),
             tags.Tag(f"py{tag}", "none", "any"),
@@ -206,4 +262,6 @@ def test_compatible_tags(python, tag):
 
     # Test that previous compatible tags are included
     assert tags.Tag("cp38", "abi3", "linux_x86_64") in env.compatible_tags[python]
+    assert tags.Tag("cp38", "abi3", "any")          in env.compatible_tags[python]
     assert tags.Tag("py38", "none", "linux_x86_64") in env.compatible_tags[python]
+    assert tags.Tag("py38", "none", "any")          in env.compatible_tags[python]

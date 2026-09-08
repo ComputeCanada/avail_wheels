@@ -2,7 +2,6 @@
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
 
-import re
 import string
 import urllib.parse
 from typing import List, Optional as TOptional, Set
@@ -20,9 +19,9 @@ from pyparsing import (  # noqa
     stringStart,
 )
 
-from packaging.markers import MARKER_EXPR, Marker
-from packaging.specifiers import LegacySpecifier, Specifier, SpecifierSet
-
+from packaging.markers import Marker
+from packaging.specifiers import SpecifierSet
+from packaging.utils import canonicalize_name
 
 class InvalidRequirement(ValueError):
     """
@@ -40,10 +39,15 @@ COMMA = L(",").suppress()
 SEMICOLON = L(";").suppress()
 AT = L("@").suppress()
 
-PUNCTUATION = Word("-_.")
+# Force punctuation to match exactly 1 character at a time
+PUNCTUATION = Word("-_.", exact=1)
 WILDCARD = Word("*")
-IDENTIFIER_END = ALPHANUM | (ZeroOrMore(PUNCTUATION) + ALPHANUM)
-IDENTIFIER = Combine(ZeroOrMore(WILDCARD) + ALPHANUM + ZeroOrMore(PUNCTUATION | WILDCARD) + ZeroOrMore(IDENTIFIER_END))
+# Combine alphanumeric and wildcard characters into a single greedy matcher
+IDENTIFIER_BASE = Word(string.ascii_letters + string.digits + "*")
+# Strictly alternate between Base and Punctuation (removing the buggy 'Optional')
+IDENTIFIER = Combine(IDENTIFIER_BASE + ZeroOrMore(PUNCTUATION + IDENTIFIER_BASE))
+# Reject purely wildcard strings ("*", "**", etc.)
+IDENTIFIER.addCondition(lambda s, l, t: set(t[0]) != {"*"})
 
 NAME = IDENTIFIER("name")
 EXTRA = IDENTIFIER
@@ -54,10 +58,10 @@ URL = AT + URI
 EXTRAS_LIST = EXTRA + ZeroOrMore(COMMA + EXTRA)
 EXTRAS = (LBRACKET + Optional(EXTRAS_LIST) + RBRACKET)("extras")
 
-VERSION_PEP440 = Regex(Specifier._regex_str, re.VERBOSE | re.IGNORECASE)
-VERSION_LEGACY = Regex(LegacySpecifier._regex_str, re.VERBOSE | re.IGNORECASE)
+SPECIFIER_OP = Regex(r"===|==|!=|<=|>=|~=|<|>")
+SPECIFIER_VER = Word(string.ascii_letters + string.digits + ".-_+*")
+VERSION_ONE = Combine(SPECIFIER_OP + SPECIFIER_VER)
 
-VERSION_ONE = VERSION_PEP440 ^ VERSION_LEGACY
 VERSION_MANY = Combine(
     VERSION_ONE + ZeroOrMore(COMMA + VERSION_ONE), joinString=",", adjacent=False
 )("_raw_spec")
@@ -67,12 +71,9 @@ _VERSION_SPEC.setParseAction(lambda s, l, t: t._raw_spec or "")
 VERSION_SPEC = originalTextFor(_VERSION_SPEC)("specifier")
 VERSION_SPEC.setParseAction(lambda s, l, t: t[1])
 
-MARKER_EXPR = originalTextFor(MARKER_EXPR())("marker")
-MARKER_EXPR.setParseAction(
-    lambda s, l, t: Marker(s[t._original_start: t._original_end])
-)
 MARKER_SEPARATOR = SEMICOLON
-MARKER = MARKER_SEPARATOR + MARKER_EXPR
+MARKER_RAW = Regex(r"[^;\n\r]+").setParseAction(lambda s, l, t: Marker(t[0].strip()))("marker")
+MARKER = MARKER_SEPARATOR + MARKER_RAW
 
 VERSION_AND_MARKER = VERSION_SPEC + Optional(MARKER)
 URL_AND_MARKER = URL + Optional(MARKER)
@@ -107,7 +108,7 @@ class Requirement:
             )
 
         # Cannonicalize name
-        self.name = req.name.replace("-", "_").lower()  # type: str
+        self.name = canonicalize_name(req.name)
         if req.url:
             parsed_url = urllib.parse.urlparse(req.url)
             if parsed_url.scheme == "file":

@@ -1,23 +1,25 @@
 #!/cvmfs/soft.computecanada.ca/custom/python/envs/avail_wheels/bin/python3
 
 import os
-import sys
 import re
 import argparse
 import fnmatch
-import operator
 import warnings
 import configparser
-import tomllib
 from tabulate import tabulate, tabulate_formats
 import packaging
+from packaging.utils import canonicalize_name
 import wild_requirements as requirements
 from runtime_env import RuntimeEnvironment
 from collections import defaultdict
 from itertools import chain
+from functools import cached_property, lru_cache
+import signal
 
+# default UNIX signal handling for SIGPIPE globally.
+signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
-__version__ = "2.1.3"
+__version__ = "3.0.0"
 
 env = RuntimeEnvironment()
 
@@ -26,6 +28,7 @@ HEADERS = ['name', 'version', 'python', 'arch']
 
 DEFAULT_STAR_ARG = ['*']
 
+VCS_SCHEMES = ("git+", "hg+", "svn+", "bzr+", "https://", "http://", "file://")
 
 def __warning_on_one_line(message, category, filename=None, lineno=None, file=None, line=None):
     return f'{category.__name__}: {message}\n'
@@ -37,6 +40,15 @@ warnings.formatwarning = __warning_on_one_line
 # The wheel filename is {distribution}-{version}([-+]{build tag})?-{python tag}-{abi tag}-{platform tag}.whl.
 # The version can be numeric, alpha or alphanum or a combinaison.
 WHEEL_RE = re.compile(r"(?P<name>.+?)-(?P<version>.+?)(-(?P<build>\d[^-]*))?-(?P<tags>.+?-.+?-.+?)\.whl")
+
+# Substitute regex for to condense numerous - _ . into one [-_.]
+NAMESEP_RE = re.compile(r"[-_.]+")
+
+# Cache parsing tags. Only few (~52) occurences of tags exists accross the wheelhouse.
+# ie CacheInfo(hits=18482, misses=52, maxsize=200, currsize=52)
+@lru_cache(maxsize=200)
+def _parse_tag_cached(tag):
+    return packaging.tags.parse_tag(tag)
 
 
 class Wheel():
@@ -59,6 +71,7 @@ class Wheel():
         self._filename = filename
         self._arch = arch
         self._name = name
+        self._namelower = name.lower()
         self._version = version
         self._build = build
         self._tags = tags
@@ -78,19 +91,23 @@ class Wheel():
         """
         m = WHEEL_RE.match(filename)
         if m:
+            name, version, _, build, tags = m.groups()
             return Wheel(
                 filename=filename,
                 arch=arch,
-                name=m.group('name'),
-                version=m.group('version'),
-                build=m.group('build') or "",  # Build is optional
-                tags=packaging.tags.parse_tag(m.group('tags')),
+                name=name,
+                version=version,
+                build=build or "",  # Build is optional
+                tags=_parse_tag_cached(tags),
             )
         else:
             warnings.warn(f"Could not get tags for : {filename}")
             return Wheel(filename=filename, arch=arch)
 
+    @cached_property
     def loose_version(self):
+        if not self._version:
+            return ""
         return packaging.version.parse(self._version)
 
     @property
@@ -107,15 +124,23 @@ class Wheel():
 
     @property
     def namelower(self):
-        return self._name.lower()
+        return self._namelower
+
+    @cached_property
+    def canonical_name(self):
+        return canonicalize_name(self.name)
 
     @property
     def version(self):
-        return self.loose_version().public
+        if not self._version:
+            return ""
+        return self.loose_version.public
 
     @property
     def localversion(self):
-        return self.loose_version().local
+        if not self._version:
+            return ""
+        return self.loose_version.local
 
     @property
     def build(self):
@@ -125,15 +150,15 @@ class Wheel():
     def tags(self):
         return self._tags
 
-    @property
+    @cached_property
     def python(self):
         return ",".join(sorted(set(tag.interpreter for tag in self._tags)))
 
-    @property
+    @cached_property
     def abi(self):
         return ",".join(sorted(set(tag.abi for tag in self._tags)))
 
-    @property
+    @cached_property
     def platform(self):
         return ",".join(sorted(set(tag.platform for tag in self._tags)))
 
@@ -147,20 +172,27 @@ class Wheel():
         if not isinstance(other, Wheel):
             return NotImplemented
 
-        return self.__dict__ == other.__dict__
+        return (
+            self._filename == other._filename
+            and self._arch == other._arch
+            and self._name == other._name
+            and self._version == other._version
+            and self._build == other._build
+            and self._tags == other._tags
+        )
 
 
-def is_compatible(wheel, pythons):
+def is_compatible(wheel, python_tags):
     """
     Verify that the wheel tags are compatible with currently supported tags.
     """
-    return any(not wheel.tags.isdisjoint(env.compatible_tags[p]) for p in pythons)
+    return not wheel.tags.isdisjoint(python_tags)
 
 
 def match_file(file, rexes):
     """ Match file with one or more regular expressions. """
     for rex in rexes:
-        if re.match(rex, file):
+        if rex.match(file):
             return True
     return False
 
@@ -170,10 +202,10 @@ def match_version(wheel, reqs):
     Match an exact requirements or a wild requirements.
     When a requirements has no specifiers, it automatically match.
     """
-    if wheel.namelower in reqs:
-        return wheel.version in reqs[wheel.namelower].specifier
+    if wheel.canonical_name in reqs:
+        return wheel.version in reqs[wheel.canonical_name].specifier
     else:
-        return any(re.match(fnmatch.translate(req_name), wheel.namelower, re.IGNORECASE) and wheel.version in req.specifier for req_name, req in reqs.items())
+        return any(re.match(fnmatch.translate(canonicalize_name(req_name)), wheel.canonical_name, re.IGNORECASE) and wheel.version in req.specifier for req_name, req in reqs.items())
 
 
 def get_rexes(reqs):
@@ -182,7 +214,11 @@ def get_rexes(reqs):
     Supports exact matching and globbing of name.
     pattern: name-*.whl
     """
-    return [re.compile(fnmatch.translate(f"{req}-*.whl"), re.IGNORECASE) for req in reqs]
+    return [
+        # Replace -, _, . with [-_.] so it matches any separator on disk
+        re.compile(fnmatch.translate(f"{NAMESEP_RE.sub('[-_.]', req)}-*.whl"), re.IGNORECASE)
+        for req in reqs
+    ]
 
 
 def get_wheels(paths, reqs, pythons, latest):
@@ -197,26 +233,30 @@ def get_wheels(paths, reqs, pythons, latest):
         """
         for path in paths:
             arch = os.path.basename(path)
-            for _, _, files in os.walk(f"{path}"):
-                for file in files:
-                    yield arch, file
+            with os.scandir(path) as entries:
+                for entry in entries:
+                    if entry.name.endswith('.whl'):
+                        yield arch, entry.name
 
     wheels = defaultdict(list)
+    python_tags = frozenset().union(*(env.compatible_tags[p] for p in pythons))
+    parse_wheel = Wheel.parse_wheel_filename
 
     if reqs:
         rexes = get_rexes(reqs)
+
         for arch, file in _get_wheels_from_fs(paths):
             if match_file(file, rexes):
-                wheel = Wheel.parse_wheel_filename(file, arch)
-                if match_version(wheel, reqs) and is_compatible(wheel, pythons):
-                    wheels[wheel.namelower].append(wheel)
+                wheel = parse_wheel(file, arch)
+                if is_compatible(wheel, python_tags) and match_version(wheel, reqs):
+                    wheels[wheel.canonical_name].append(wheel)
 
     # Display all available wheels that are compatible (no reqs were given)
     else:
         for arch, file in _get_wheels_from_fs(paths):
-            wheel = Wheel.parse_wheel_filename(file, arch)
-            if is_compatible(wheel, pythons):
-                wheels[wheel.namelower].append(wheel)
+            wheel = parse_wheel(file, arch)
+            if is_compatible(wheel, python_tags):
+                wheels[wheel.canonical_name].append(wheel)
 
     # Filter versions
     return latest_versions(wheels) if latest else wheels
@@ -229,17 +269,26 @@ def latest_versions(wheels):
     latests = defaultdict(list)
 
     for wheel_name, wheel_list in wheels.items():
-        wheel_list.sort(key=operator.methodcaller('loose_version'), reverse=True)
-        latests[wheel_name] = []
-        latest = wheel_list[0].loose_version()
-
-        for wheel in wheel_list:
-            if latest == wheel.loose_version():
-                latests[wheel_name].append(wheel)
-            else:
-                break
+        latest = max(w.loose_version for w in wheel_list)
+        latests[wheel_name] = [w for w in wheel_list if w.loose_version == latest]
 
     return latests
+
+
+def remove_duplicates(seq):
+    """
+    Remove duplicate items from a sequence while preserving order.
+    """
+    seen = set()
+    ret = []
+
+    for item in seq:
+        key = tuple(item) if isinstance(item, list) else item
+        if key not in seen:
+            seen.add(key)
+            ret.append(item)
+
+    return ret
 
 
 def sort(wheels, columns, condense=False):
@@ -247,53 +296,68 @@ def sort(wheels, columns, condense=False):
     Transforms dict of wheels to a list of lists
     where the columns are the wheel tags.
     """
+    def loose_key(column, value=None):
+        """
+        Sort key based on column:
+          - 'version': semantic PEP 440 version parsing
+          - 'python', 'build': natural sorting (cp311 > cp310 > cp39)
+          - other columns: standard string sorting
+        """
+        if column == "version":
+            # Parse a version string when not empty or None.
+            key_fn = lambda v: packaging.version.parse(v) if v else packaging.version.Version("0.0.0")
+        elif column in ("python", "build"):
+            # Natural/numeric sorting ensures multi-digit values sort numerically:
+            # For 'python': cp311 > cp310 > cp39 > cp38 (rather than alphabetical cp39 > cp311)
+            # For 'build': build 10 > 9 > 2 > 1 > "" (rather than alphabetical "9" > "10")
+            key_fn = lambda x: [int(s) if s.isdigit() else s for s in re.split(r'(\d+)', str(x or ""))]
+        else:
+            # Other columns use standard string sort
+            key_fn = str
 
-    def loose_key(x):
-        """
-        Everything and nothing can be a version, loosely!
-        """
-        return packaging.version.parse(x)
+        return key_fn(value) if value is not None else key_fn
 
     ret = []
     sep = ", "
 
-    # Sort in-place, by name insensitively asc, then by version desc, then by arch desc, then by python desc
+    # Sort in-place, by name insensitively asc, then by version desc, then by build desc, then by arch desc, then by python desc
     # Since the sort is stable and Timsort can benefit from previous sort, this is fast.
-    wheel_names = sorted(wheels.keys(), key=lambda s: s.casefold())
+    wheel_names = sorted(wheels.keys(), key=str.casefold)
     for wheel_name in wheel_names:
         wheel_list = wheels[wheel_name]
-        wheel_list.sort(key=lambda x: loose_key(x.python), reverse=True)
-        wheel_list.sort(key=operator.attrgetter('arch'), reverse=True)
-        wheel_list.sort(key=operator.methodcaller('loose_version'), reverse=True)
+        wheel_list.sort(
+            key=lambda x: (
+                x.loose_version,
+                loose_key("build", x.build),
+                x.arch,
+                loose_key("python", x.python),
+            ),
+            reverse=True,
+        )
 
         # Condense wheel information on one line.
         # For every column, every wheel, insert the tag into a uniq set, then join tag values and re-sort.
         # Otherwise, get the columns.
         if condense:
-            row = []
-            dwheel = {}
-            for column in columns:
-                dwheel[column] = set()
-
-                for wheel in wheel_list:
-                    dwheel[column].add(getattr(wheel, column))
-
-                row.append(sep.join(sorted(dwheel.get(column), key=loose_key, reverse=True)))
-
+            row = [
+                sep.join(sorted({getattr(wheel, column) or "" for wheel in wheel_list}, key=loose_key(column), reverse=True))
+                for column in columns
+            ]
             ret.append(row)
         else:
             ret.extend([[getattr(wheel, column) for column in columns] for wheel in wheel_list])
 
-    return ret
+    return remove_duplicates(ret)
 
 
 def add_not_available_wheels(wheels, reqs, not_available_only=False):
     """ Add the wheels names given from the user that were not found. """
 
     # Return the wheel set, or an empty set where wheels not available were added.
-    ret = wheels if not not_available_only else defaultdict(list)
+    ret = defaultdict(list) if not_available_only else wheels
 
     for wheel in reqs:
+        wheel = canonicalize_name(wheel)
         # Do not duplicate and add names that translate to an already present name.
         if wheel not in wheels and all(not re.match(fnmatch.translate(wheel), w) for w in wheels.keys()):
             ret[wheel].append(Wheel(filename=wheel, name=wheel))
@@ -305,22 +369,31 @@ def filter_search_paths(search_paths, arch_values):
     """
     Filter paths that ends with specific values.
     """
-    if arch_values is None or arch_values == []:
+    if not arch_values:
         return search_paths
 
-    return [path for arch_value in arch_values for path in search_paths if path.endswith(arch_value)]
+    return [
+        path
+        for path in search_paths
+        if any(path.endswith(arch_value) for arch_value in arch_values)
+    ]
 
 
 def get_search_paths():
     """
     Gets the search paths from the $PIP_CONFIG_FILE or start at root of the wheelhouse.
     """
-    if env.pip_config_file is None or env.pip_config_file == "":
-        return [os.path.join(root, d) for root, dirs, _ in os.walk(env.wheelhouse) if root[len(env.wheelhouse):].count(os.sep) == 1 for d in dirs]
+    if not env.pip_config_file:
+        return [
+            level2.path
+            for level1 in os.scandir(env.wheelhouse) if level1.is_dir()
+            for level2 in os.scandir(level1.path) if level2.is_dir()
+        ]
 
     cfg = configparser.ConfigParser()
-    cfg.read_file(open(env.pip_config_file))
-    return cfg['wheel']['find-links'].split(' ')
+    with open(env.pip_config_file) as f:
+        cfg.read_file(f)
+    return cfg['wheel']['find-links'].split()
 
 
 def get_requirements_set(args):
@@ -346,34 +419,50 @@ def get_requirements_set(args):
         # Include here, as importing is slow!
         from pip._internal.req import req_file
         from pip._internal.network.session import PipSession
-        for fname in args.requirements:
-            # Read dependencies section from local pyproject.toml
-            if os.path.basename(fname) == "pyproject.toml":
-                with open(fname, 'rb') as f:
-                    pyproject = tomllib.load(f)
+        from urllib.parse import urlsplit
+        import tomllib
 
-                    # https://packaging.python.org/en/latest/guides/writing-pyproject-toml/#dependencies-and-requirements
-                    for freq in pyproject['project'].get('dependencies', []):
-                        r = make_requirement(freq)
-                        reqs[r.name] = r
+        session = PipSession()
+        for fname in args.requirements:
+            parsed = urlsplit(fname)
+            # Read dependencies section from local or remote pyproject.toml
+            if os.path.basename(parsed.path) == "pyproject.toml":
+                if parsed.scheme in ("http", "https"):
+                    resp = session.get(fname)
+                    resp.raise_for_status()
+                    pyproject = tomllib.loads(resp.content.decode("utf-8"))
+                else:
+                    with open(fname, 'rb') as f:
+                        pyproject = tomllib.load(f)
+
+                # https://packaging.python.org/en/latest/guides/writing-pyproject-toml/#dependencies-and-requirements
+                for freq in pyproject.get('project', {}).get('dependencies', []):
+                    r = make_requirement(freq)
+                    if r is not None:
+                        reqs[canonicalize_name(r.name)] = r
             else:
                 # assume requirements.txt file
-                for freq in req_file.parse_requirements(fname, session=PipSession()):
+                for freq in req_file.parse_requirements(fname, session=session):
                     r = make_requirement(freq.requirement)
-                    reqs[r.name] = r
+                    if r is not None:
+                        reqs[canonicalize_name(r.name)] = r
 
     # Then add requirements from the command line so they are prioritize.
     for req in chain(args.wheel, args.name):
-        if args.specifier:
-            reqs[req.name] = requirements.Requirement(f"{req.name}{args.specifier}")
-        else:
-            reqs[req.name] = req
+        if req is not None:
+            if args.specifier:
+                reqs[canonicalize_name(req.name)] = requirements.Requirement(f"{req.name}{args.specifier}")
+            else:
+                reqs[canonicalize_name(req.name)] = req
 
-    return reqs if len(reqs) != 0 else None
+    return reqs or None
 
 
 def make_eq_specifier(v):
     """
+    Convert a version string into an equality SpecifierSet.
+    Supports exact versions (e.g. '1.2.0') as well as wildcard version
+    patterns (e.g. '1.2.*').
     """
     try:
         return packaging.specifiers.SpecifierSet(f"=={v}")
@@ -383,7 +472,22 @@ def make_eq_specifier(v):
 
 def make_requirement(r):
     """
+    Parse a requirement string.
+    Accepts standard requirements and named VCS dependencies (eg 'gwcs @ git+...').
+    Warns and skips bare URLs or unsupported formats lacking an explicit package name.
     """
+    r = r.strip()
+
+    # Warn and skip bare URLs, VCS without package name (eg 'git+https://...', 'https://...git@master')
+    if r.startswith(VCS_SCHEMES):
+        warnings.warn(f"Skipping unsupported URL requirement format: {r!r}")
+        return None
+
+    # Accept named VCS / direct reference (eg 'gwcs @ git+https://...')
+    if "@" in r:
+        name, _, _ = r.partition("@")
+        r = name.strip()
+
     try:
         # Partition requirement on '+'.
         # This is useful for requirements like jaxlib==0.4.20+cuda12.cudnn89.computecanada which contains name, version and local version.
@@ -421,6 +525,7 @@ def create_argparser():
         "    avail_wheels 'dgl-cpu<0.6.0' -r requirements.txt",
     ])
     epilog += "\nFor more information, see: https://docs.computecanada.ca/wiki/Python#Listing_available_wheels"
+    epilog += "\n\nFor python wheels request, please contact us: https://docs.alliancecan.ca/wiki/Technical_support"
 
     parser = argparse.ArgumentParser(prog="avail_wheels",
                                      formatter_class=HelpFormatter,
@@ -488,21 +593,12 @@ def main():
     if args.not_available or args.not_available_only:
         wheels = add_not_available_wheels(wheels, reqs, args.not_available_only)
 
-    # Handle SIGPIP emitted by piping to utils like head.
-    # https://docs.python.org/3/library/signal.html#note-on-sigpipe
-    try:
-        if args.raw:
-            for wheel_list in wheels.values():
-                print(*wheel_list, sep='\n')
-        else:
-            wheels = sort(wheels, args.column, args.condense)
-            print(tabulate(wheels, headers=args.column, tablefmt="mediawiki" if args.mediawiki else args.format))
-    except BrokenPipeError:
-        # Python flushes standard streams on exit; redirect remaining output
-        # to devnull to avoid another BrokenPipeError at shutdown
-        devnull = os.open(os.devnull, os.O_WRONLY)
-        os.dup2(devnull, sys.stdout.fileno())
-        sys.exit(1)  # Python exits with error code 1 on EPIPE
+    if args.raw:
+        for wheel_list in wheels.values():
+            print(*wheel_list, sep='\n')
+    else:
+        wheels = sort(wheels, args.column, args.condense)
+        print(tabulate(wheels, headers=args.column, tablefmt="mediawiki" if args.mediawiki else args.format))
 
 
 if __name__ == "__main__":

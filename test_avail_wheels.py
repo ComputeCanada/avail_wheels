@@ -1,5 +1,5 @@
 from io import StringIO
-from argparse import ArgumentError
+from argparse import ArgumentError, ArgumentTypeError
 from contextlib import redirect_stderr
 from fnmatch import translate
 import re
@@ -97,17 +97,21 @@ def test_wheel_ctor_kwargs():
     """
     tags = packaging.tags.parse_tag("cp36-cp36m-linux_x86_64")
     wheel = avail_wheels.Wheel(
-        filename="file",
+        filename="torch_cpu-1.2.0+computecanada-cp36-cp36m-linux_x86_64.whl",
         arch="avx",
         name="torch_cpu",
         version="1.2.0+computecanada",
         build="",
         tags=tags,
     )
-    assert wheel.filename == "file"
+    assert wheel.filename == "torch_cpu-1.2.0+computecanada-cp36-cp36m-linux_x86_64.whl"
     assert wheel.arch == "avx"
     assert wheel.name == "torch_cpu"
+    assert wheel.namelower == "torch_cpu"
+    assert wheel.canonical_name == "torch-cpu"
+    assert wheel.loose_version == packaging.version.Version("1.2.0+computecanada")
     assert wheel.version == "1.2.0"
+    assert wheel.localversion == "computecanada"
     assert wheel.build == ""
     assert wheel.tags == tags
     assert wheel.python == "cp36"
@@ -125,11 +129,14 @@ def test_wheel_parse_tags():
         ("generic", "backports.functools_lru_cache-1.4-py2.py3-none-any.whl"),
         ("sse3", "Shapely-1.6.2.post1-cp35-cp35m-linux_x86_64.whl"),
         ("generic", "shiboken2-5.15.0-5.15.0-cp35.cp36.cp37.cp38-abi3-linux_x86_64.whl"),
+        ("avx2", "torch_scatter-2.1.2+torch210.computecanada-cp311-cp311-linux_x86_64.whl"),
     ]
     tags = {
         filenames[0][1]: {
             "arch": "avx2",
             "name": "netCDF4",
+            "namelower": "netcdf4",
+            "canonical_name": "netcdf4",
             "version": "1.3.1",
             "localversion": None,
             "build": "",
@@ -140,6 +147,8 @@ def test_wheel_parse_tags():
         filenames[1][1]: {
             "arch": "avx",
             "name": "tensorflow_cpu",
+            "namelower": "tensorflow_cpu",
+            "canonical_name": "tensorflow-cpu",
             "version": "1.6.0",
             "localversion": "computecanada",
             "build": "",
@@ -150,6 +159,8 @@ def test_wheel_parse_tags():
         filenames[2][1]: {
             "arch": "generic",
             "name": "backports.functools_lru_cache",
+            "namelower": "backports.functools_lru_cache",
+            "canonical_name": "backports-functools-lru-cache",
             "version": "1.4",
             "localversion": None,
             "build": "",
@@ -160,6 +171,8 @@ def test_wheel_parse_tags():
         filenames[3][1]: {
             "arch": "sse3",
             "name": "Shapely",
+            "namelower": "shapely",
+            "canonical_name": "shapely",
             "version": "1.6.2.post1",
             "localversion": None,
             "build": "",
@@ -170,11 +183,25 @@ def test_wheel_parse_tags():
         filenames[4][1]: {
             "arch": "generic",
             "name": "shiboken2",
+            "namelower": "shiboken2",
+            "canonical_name": "shiboken2",
             "version": "5.15.0",
             "localversion": None,
             "build": "5.15.0",
             "python": "cp35,cp36,cp37,cp38",
             "abi": "abi3",
+            "platform": "linux_x86_64",
+        },
+        filenames[5][1]: {
+            "arch": "avx2",
+            "name": "torch_scatter",
+            "namelower": "torch_scatter",
+            "canonical_name": "torch-scatter",
+            "version": "2.1.2",
+            "localversion": "torch210.computecanada",
+            "build": "",
+            "python": "cp311",
+            "abi": "cp311",
             "platform": "linux_x86_64",
         },
     }
@@ -184,6 +211,8 @@ def test_wheel_parse_tags():
         assert wheel.filename == file
         assert wheel.arch == tags[file]["arch"]
         assert wheel.name == tags[file]["name"]
+        assert wheel.namelower == tags[file]["namelower"]
+        assert wheel.canonical_name == tags[file]["canonical_name"]
         assert wheel.version == tags[file]["version"]
         assert wheel.localversion == tags[file]["localversion"]
         assert wheel.build == tags[file]["build"]
@@ -192,10 +221,33 @@ def test_wheel_parse_tags():
         assert wheel.platform == tags[file]["platform"]
 
 
+@pytest.mark.parametrize("invalid_filename", [
+    "invalid-wheel-filename.whl",
+    "not_a_wheel.tar.gz",
+    "onlyonename.whl",
+])
+def test_wheel_parse_tags_invalid_filename(invalid_filename):
+    """
+    Test that parse_wheel_filename warns and returns a fallback Wheel
+    when the filename does not match WHEEL_RE.
+    """
+    arch = "generic"
+
+    with pytest.warns(UserWarning, match=re.escape(f"Could not get tags for : {invalid_filename}")):
+        wheel = avail_wheels.Wheel.parse_wheel_filename(filename=invalid_filename, arch=arch)
+
+    assert wheel.filename == invalid_filename
+    assert wheel.arch == arch
+    assert wheel.name == ""
+    assert wheel.version == ""
+    assert wheel.build == ""
+    assert wheel.tags == frozenset()
+
+
 def test_wheel_loose_version():
     """Test that the string repr of version is a parsed version."""
     wheel = avail_wheels.Wheel(version="1.2+cc")
-    loose_version = wheel.loose_version()
+    loose_version = wheel.loose_version
 
     assert isinstance(loose_version, packaging.version.Version)
     assert loose_version == packaging.version.Version("1.2+cc")
@@ -205,7 +257,6 @@ def test_latest_versions_method_all_pythons():
     """
     Test that the latest version are returned.
     """
-    # TODO : test with build and local version as well
     wheels = {
         "netCDF4": [
             avail_wheels.Wheel.parse_wheel_filename("netCDF4-1.3.2-cp36-cp36m-linux_x86_64.whl", "avx2"),
@@ -220,9 +271,24 @@ def test_latest_versions_method_all_pythons():
         "torch_cpu": [
             avail_wheels.Wheel.parse_wheel_filename("torch_cpu-0.4.0-cp36-cp36m-linux_x86_64.whl", "avx2")
         ],
+        "pydicom": [
+            avail_wheels.Wheel.parse_wheel_filename("pydicom-1.1.0-1-py3-none-any.whl", "generic"),
+            avail_wheels.Wheel.parse_wheel_filename("pydicom-1.1.0-1-py2-none-any.whl", "generic"),
+            avail_wheels.Wheel.parse_wheel_filename("pydicom-0.9.9-py3-none-any.whl", "generic"),
+            avail_wheels.Wheel.parse_wheel_filename("pydicom-0.9.9-py2-none-any.whl", "generic"),
+        ],
+        "tensorflow_gpu": [
+            avail_wheels.Wheel.parse_wheel_filename("tensorflow_gpu-1.8.0+computecanada-cp36-cp36m-linux_x86_64.whl", "avx2"),
+            avail_wheels.Wheel.parse_wheel_filename("tensorflow_gpu-1.8.0+computecanada-cp35-cp35m-linux_x86_64.whl", "avx2"),
+            avail_wheels.Wheel.parse_wheel_filename("tensorflow_gpu-1.8.0+computecanada-cp27-cp27mu-linux_x86_64.whl", "avx2"),
+            avail_wheels.Wheel.parse_wheel_filename("tensorflow_gpu-1.8.0-cp36-cp36m-linux_x86_64.whl", "avx2"),
+            avail_wheels.Wheel.parse_wheel_filename("tensorflow_gpu-1.7.0+computecanada-cp36-cp36m-linux_x86_64.whl", "avx2"),
+        ],
     }
 
     wheels["netCDF4"].reverse()
+    wheels["pydicom"].reverse()
+    wheels["tensorflow_gpu"].reverse()
 
     latest_wheels = {
         "netCDF4": [
@@ -233,13 +299,235 @@ def test_latest_versions_method_all_pythons():
         "torch_cpu": [
             avail_wheels.Wheel.parse_wheel_filename("torch_cpu-0.4.0-cp36-cp36m-linux_x86_64.whl", "avx2")
         ],
+        "pydicom": [
+            avail_wheels.Wheel.parse_wheel_filename("pydicom-1.1.0-1-py2-none-any.whl", "generic"),
+            avail_wheels.Wheel.parse_wheel_filename("pydicom-1.1.0-1-py3-none-any.whl", "generic"),
+        ],
+        "tensorflow_gpu": [
+            avail_wheels.Wheel.parse_wheel_filename("tensorflow_gpu-1.8.0+computecanada-cp27-cp27mu-linux_x86_64.whl", "avx2"),
+            avail_wheels.Wheel.parse_wheel_filename("tensorflow_gpu-1.8.0+computecanada-cp35-cp35m-linux_x86_64.whl", "avx2"),
+            avail_wheels.Wheel.parse_wheel_filename("tensorflow_gpu-1.8.0+computecanada-cp36-cp36m-linux_x86_64.whl", "avx2"),
+        ],
     }
 
     assert avail_wheels.latest_versions(wheels) == latest_wheels
 
 
-@pytest.fixture
-def to_be_sorted_wheels():
+def test_latest_versions_type():
+    """ Test that latest_versions method return type is a defaultdict. """
+    assert isinstance(avail_wheels.latest_versions({}), defaultdict)
+
+
+def test_latest_versions_semantic_versioning():
+    """
+    Test that latest_versions uses PEP 440 semantic version comparison rather than
+    alphabetical string sorting when version numbers cross decimal / digit boundaries:
+      - cf_xarray: 0.10.11 > 0.9.5  (string comparison incorrectly picks 0.9.5)
+      - botocore:  1.42.49 > 1.9.5   (string comparison incorrectly picks 1.9.5)
+      - boto3:     1.42.30 > 1.9.86  (string comparison incorrectly picks 1.9.86)
+    """
+    wheels = {
+        "cf_xarray": [
+            avail_wheels.Wheel.parse_wheel_filename("cf_xarray-0.9.5+computecanada-py3-none-any.whl", "generic"),
+            avail_wheels.Wheel.parse_wheel_filename("cf_xarray-0.10.11+computecanada-py3-none-any.whl", "generic"),
+        ],
+        "botocore": [
+            avail_wheels.Wheel.parse_wheel_filename("botocore-1.9.5+computecanada-py2.py3-none-any.whl", "generic"),
+            avail_wheels.Wheel.parse_wheel_filename("botocore-1.10.63+computecanada-py2.py3-none-any.whl", "generic"),
+            avail_wheels.Wheel.parse_wheel_filename("botocore-1.42.49+computecanada-py3-none-any.whl", "generic"),
+        ],
+        "boto3": [
+            avail_wheels.Wheel.parse_wheel_filename("boto3-1.9.86+computecanada-py2.py3-none-any.whl", "generic"),
+            avail_wheels.Wheel.parse_wheel_filename("boto3-1.9.235+computecanada-py2.py3-none-any.whl", "generic"),
+            avail_wheels.Wheel.parse_wheel_filename("boto3-1.42.30+computecanada-py3-none-any.whl", "generic"),
+        ],
+    }
+
+    expected = {
+        "cf_xarray": [
+            avail_wheels.Wheel.parse_wheel_filename("cf_xarray-0.10.11+computecanada-py3-none-any.whl", "generic"),
+        ],
+        "botocore": [
+            avail_wheels.Wheel.parse_wheel_filename("botocore-1.42.49+computecanada-py3-none-any.whl", "generic"),
+        ],
+        "boto3": [
+            avail_wheels.Wheel.parse_wheel_filename("boto3-1.42.30+computecanada-py3-none-any.whl", "generic"),
+        ],
+    }
+
+    assert avail_wheels.latest_versions(wheels) == expected
+
+
+def test_latest_versions_preserves_multiple_wheels_at_latest_version():
+    """
+    Test that when the latest semantic version has builds for multiple Python tags
+    or architectures, all matching wheels are preserved.
+    """
+    wheels = {
+        "botocore": [
+            avail_wheels.Wheel.parse_wheel_filename("botocore-1.9.5+computecanada-py2.py3-none-any.whl", "generic"),
+            avail_wheels.Wheel.parse_wheel_filename("botocore-1.42.49+computecanada-cp38-cp38-linux_x86_64.whl", "generic"),
+            avail_wheels.Wheel.parse_wheel_filename("botocore-1.42.49+computecanada-cp39-cp39-linux_x86_64.whl", "generic"),
+        ]
+    }
+    latests = avail_wheels.latest_versions(wheels)
+
+    assert len(latests["botocore"]) == 2
+    assert {w.python for w in latests["botocore"]} == {"cp38", "cp39"}
+    assert all(w.version == "1.42.49" for w in latests["botocore"])
+
+
+def test_sort_type():
+    """ Test that sort method return type is a list. """
+    assert isinstance(avail_wheels.sort({}, None), list)
+
+
+def test_sort_build_tag():
+    """Test that wheels with build tags sort descending by build tag."""
+    wheels = {
+        "pydicom": [
+            avail_wheels.Wheel.parse_wheel_filename("pydicom-1.1.0-1-py2.py3-none-any.whl", "generic"),
+            avail_wheels.Wheel.parse_wheel_filename("pydicom-1.1.0-2-py2.py3-none-any.whl", "generic"),
+            avail_wheels.Wheel.parse_wheel_filename("pydicom-1.1.0-py2.py3-none-any.whl", "generic"),
+        ],
+        "name": [
+            avail_wheels.Wheel.parse_wheel_filename("name-1.1-10-py2.py3-none-any.whl", "generic"),
+            avail_wheels.Wheel.parse_wheel_filename("name-1.1-9-py2.py3-none-any.whl", "generic"),
+            avail_wheels.Wheel.parse_wheel_filename("name-1.1-8-py2.py3-none-any.whl", "generic"),
+        ],
+    }
+    # Row-by-row sort
+    assert avail_wheels.sort(wheels, ["name", "version", "build"]) == [
+        ["name", "1.1", "10"],
+        ["name", "1.1", "9"],
+        ["name", "1.1", "8"],
+        ["pydicom", "1.1.0", "2"],
+        ["pydicom", "1.1.0", "1"],
+        ["pydicom", "1.1.0", ""],
+    ]
+
+    # Condensed view
+    assert avail_wheels.sort(wheels, ["name", "version", "build"], condense=True) == [
+        ["name", "1.1", "10, 9, 8"],
+        ["pydicom", "1.1.0", "2, 1, "],
+    ]
+
+
+def test_sort_version_semantic_not_alphabetical():
+    """
+    Test that versions are sorted by PEP 440 semantic order
+    (1.10.0 > 1.9.0 > 1.2.0 > 1.2.0a1) rather than lexicographical order (1.9.0 > 1.2.0 > 1.10.0).
+    """
+    wheels = {
+        "demo": [
+            avail_wheels.Wheel.parse_wheel_filename("demo-1.2.0-py3-none-any.whl", "generic"),
+            avail_wheels.Wheel.parse_wheel_filename("demo-1.10.0-py3-none-any.whl", "generic"),
+            avail_wheels.Wheel.parse_wheel_filename("demo-1.9.0-py3-none-any.whl", "generic"),
+            avail_wheels.Wheel.parse_wheel_filename("demo-1.2.0a1-py3-none-any.whl", "generic"),
+        ]
+    }
+
+    # Columns view
+    assert avail_wheels.sort(wheels, ["name", "version"], condense=False) == [
+        ["demo", "1.10.0"],
+        ["demo", "1.9.0"],
+        ["demo", "1.2.0"],
+        ["demo", "1.2.0a1"],
+    ]
+
+    # Condensed view
+    assert avail_wheels.sort(wheels, ["name", "version"], condense=True) == [
+        ["demo", "1.10.0, 1.9.0, 1.2.0, 1.2.0a1"]
+    ]
+
+
+def test_sort_case_insensitive_name_order():
+    """Test that package names sort case-insensitively ascending (str.casefold)."""
+    wheels = {
+        "scipy": [avail_wheels.Wheel.parse_wheel_filename("scipy-1.0.0-py3-none-any.whl", "generic")],
+        "NetCDF4": [avail_wheels.Wheel.parse_wheel_filename("NetCDF4-1.0.0-py3-none-any.whl", "generic")],
+        "arrow": [avail_wheels.Wheel.parse_wheel_filename("arrow-1.0.0-py3-none-any.whl", "generic")],
+        "PyDICOM": [avail_wheels.Wheel.parse_wheel_filename("PyDICOM-1.0.0-py3-none-any.whl", "generic")],
+    }
+    result = avail_wheels.sort(wheels, ["name"], condense=True)
+    assert result == [
+        ["arrow"],
+        ["NetCDF4"],
+        ["PyDICOM"],
+        ["scipy"],
+    ]
+
+
+def test_sort_multi_key_precedence():
+    """
+    Test tie-breaking precedence:
+    1. Version descending
+    2. Architecture descending
+    3. Python version descending
+    """
+    wheels = {
+        "pkg": [
+            # Same version (1.0), different arch
+            avail_wheels.Wheel.parse_wheel_filename("pkg-1.0-cp38-cp38-linux_x86_64.whl", "generic"),
+            avail_wheels.Wheel.parse_wheel_filename("pkg-1.0-cp38-cp38-linux_x86_64.whl", "sse3"),
+            avail_wheels.Wheel.parse_wheel_filename("pkg-1.0-cp38-cp38-linux_x86_64.whl", "avx2"),
+            # Same version (1.0), same arch (avx2), different pythons
+            avail_wheels.Wheel.parse_wheel_filename("pkg-1.0-cp311-cp311-linux_x86_64.whl", "avx2"),
+            avail_wheels.Wheel.parse_wheel_filename("pkg-1.0-cp39-cp39-linux_x86_64.whl", "avx2"),
+            # Higher version (2.0) should be first regardless of arch
+            avail_wheels.Wheel.parse_wheel_filename("pkg-2.0-cp38-cp38-linux_x86_64.whl", "generic"),
+        ]
+    }
+
+    assert avail_wheels.sort(wheels, ["name", "version", "arch", "python"]) == [
+        ["pkg", "2.0", "generic", "cp38"],
+        ["pkg", "1.0", "sse3", "cp38"],
+        ["pkg", "1.0", "generic", "cp38"],
+        ["pkg", "1.0", "avx2", "cp311"],
+        ["pkg", "1.0", "avx2", "cp39"],
+        ["pkg", "1.0", "avx2", "cp38"],
+    ]
+
+
+def test_sort_removes_duplicate_rows():
+    """
+    Test that selecting a column subset deduplicates rows that become identical.
+    """
+    wheels = {
+        "numpy": [
+            avail_wheels.Wheel.parse_wheel_filename("numpy-1.25.0-cp39-cp39-linux_x86_64.whl", "avx2"),
+            avail_wheels.Wheel.parse_wheel_filename("numpy-1.25.0-cp39-cp39-linux_x86_64.whl", "generic"),
+            avail_wheels.Wheel.parse_wheel_filename("numpy-1.25.0-cp310-cp310-linux_x86_64.whl", "avx2"),
+            avail_wheels.Wheel.parse_wheel_filename("numpy-1.24.0-cp39-cp39-linux_x86_64.whl", "generic"),
+        ]
+    }
+    # When only requesting ['name', 'version'], multiple 1.25.0 wheels collapse into one row
+    assert avail_wheels.sort(wheels, ["name", "version"]) == [
+        ["numpy", "1.25.0"],
+        ["numpy", "1.24.0"],
+    ]
+
+
+@pytest.mark.parametrize(
+    "columns, expected_row",
+    [
+        (["name", "version"], ["pkg", "1.0.0"]),
+        (["version", "name"], ["1.0.0", "pkg"]),
+        (["arch", "python", "version", "name"], ["generic", "cp39", "1.0.0", "pkg"]),
+        (["platform", "abi", "build"], ["linux_x86_64", "cp39", ""]),
+    ],
+)
+def test_sort_arbitrary_column_order(columns, expected_row):
+    """Test that output columns strictly follow the requested column ordering."""
+    wheels = {"pkg": [avail_wheels.Wheel.parse_wheel_filename("pkg-1.0.0-cp39-cp39-linux_x86_64.whl", "generic")]}
+    assert avail_wheels.sort(wheels, columns) == [expected_row]
+
+
+def test_sort_condense_all_columns():
+    """
+    Test that sort with condense=True works across all AVAILABLE_HEADERS:
+    ['name', 'version', 'localversion', 'build', 'python', 'abi', 'platform', 'arch']
+    """
     wheels = {
         "netCDF4": [
             avail_wheels.Wheel.parse_wheel_filename("netCDF4-1.3.1-cp27-cp27mu-linux_x86_64.whl", "avx"),
@@ -255,9 +543,9 @@ def to_be_sorted_wheels():
             avail_wheels.Wheel.parse_wheel_filename("netCDF4-1.2.8-cp27-cp27mu-linux_x86_64.whl", "generic"),
         ],
         "botocore": [
-            avail_wheels.Wheel.parse_wheel_filename("botocore-1.10.63-py2.py3-none-any.whl", "generic",),
-            avail_wheels.Wheel.parse_wheel_filename("botocore-1.9.5-py2.py3-none-any.whl", "generic",),
-            avail_wheels.Wheel.parse_wheel_filename("botocore-1.10.57-py2.py3-none-any.whl", "generic",),
+            avail_wheels.Wheel.parse_wheel_filename("botocore-1.10.63-py2.py3-none-any.whl", "generic"),
+            avail_wheels.Wheel.parse_wheel_filename("botocore-1.9.5-py2.py3-none-any.whl", "generic"),
+            avail_wheels.Wheel.parse_wheel_filename("botocore-1.10.57-py2.py3-none-any.whl", "generic"),
             avail_wheels.Wheel.parse_wheel_filename("botocore-1.9.11-py2.py3-none-any.whl", "generic"),
         ],
         "pydicom": [
@@ -270,50 +558,95 @@ def to_be_sorted_wheels():
         ],
     }
 
-    wheels["netCDF4"].reverse()
-    return wheels
-
-
-def test_sort_type():
-    """ Test that sort method return type is a list. """
-    assert isinstance(avail_wheels.sort({}, None), list)
-
-
-def test_sort_columns(to_be_sorted_wheels):
-    """ Test that sort returns wheels grouped by name, sorted desc by version, python, arch """
-
-    # TODO: Break down the sort tests into columns tests
-    # TODO: Add test with a build
-    assert avail_wheels.sort(to_be_sorted_wheels, ['name', 'version', 'build', 'python', 'arch']) == [
-        ["botocore", "1.10.63", "", "py2,py3", "generic"],
-        ["botocore", "1.10.57", "", "py2,py3", "generic"],
-        ["botocore", "1.9.11", "", "py2,py3", "generic"],
-        ["botocore", "1.9.5", "", "py2,py3", "generic"],
-        ["netCDF4", "1.4.0", "", "cp27", "generic"],
-        ["netCDF4", "1.3.1", "", "cp36", "sse3"],
-        ["netCDF4", "1.3.1", "", "cp35", "sse3"],
-        ["netCDF4", "1.3.1", "", "cp27", "sse3"],
-        ["netCDF4", "1.3.1", "", "cp36", "avx2"],
-        ["netCDF4", "1.3.1", "", "cp35", "avx2"],
-        ["netCDF4", "1.3.1", "", "cp27", "avx2"],
-        ["netCDF4", "1.3.1", "", "cp36", "avx"],
-        ["netCDF4", "1.3.1", "", "cp35", "avx"],
-        ["netCDF4", "1.3.1", "", "cp27", "avx"],
-        ["netCDF4", "1.2.8", "", "cp27", "generic"],
-        ["pydicom", "1.1.0", "1", "py2,py3", "generic"],
-        ["pydicom", "0.9.9", "", "py3", "generic"],
-        ["torch_cpu", "0.4.0", "", "cp36", "avx2"],
-        ["torch_cpu", "0.2.0", "", "cp27", "avx2"],
+    assert avail_wheels.sort(wheels, avail_wheels.AVAILABLE_HEADERS, condense=True) == [
+        ["botocore", "1.10.63, 1.10.57, 1.9.11, 1.9.5", "", "", "py2,py3", "none", "any", "generic"],
+        ["netCDF4", "1.4.0, 1.3.1, 1.2.8", "", "", "cp36, cp35, cp27", "cp36m, cp35m, cp27mu", "linux_x86_64", "sse3, generic, avx2, avx"],
+        ["pydicom", "1.1.0, 0.9.9", "", "1, ", "py3, py2,py3", "none", "any", "generic"],
+        ["torch_cpu", "0.4.0, 0.2.0", "d8f3c60, ", "", "cp36, cp27", "cp36m, cp27mu", "linux_x86_64", "avx2"],
     ]
 
 
-def test_sort_condense(to_be_sorted_wheels):
-    """ Test that sort return condensed information on one line. """
-    assert avail_wheels.sort(to_be_sorted_wheels, ['name', 'version', 'build', 'python', 'arch'], True) == [
-        ["botocore", "1.10.63, 1.10.57, 1.9.11, 1.9.5", "", "py2,py3", "generic"],
-        ["netCDF4", "1.4.0, 1.3.1, 1.2.8", "", "cp36, cp35, cp27", "sse3, generic, avx2, avx"],
-        ["pydicom", "1.1.0, 0.9.9", "1, ", "py3, py2,py3", "generic"],
-        ["torch_cpu", "0.4.0, 0.2.0", "", "cp36, cp27", "avx2"],
+def test_sort_empty():
+    """Test sort with empty dict and empty wheel list."""
+    assert avail_wheels.sort({}, ["name", "version"]) == []
+    assert avail_wheels.sort({"pkg": []}, ["name", "version"]) == []
+
+
+def test_sort_unavailable_wheels_with_empty_fields():
+    """
+    Test sorting wheels that have empty attributes (such as not-available wheels).
+    Should not raise AttributeError or InvalidVersion.
+    """
+    unavail_wheel = avail_wheels.Wheel(filename="missing_pkg", name="missing_pkg")
+    wheels = {
+        "missing_pkg": [unavail_wheel],
+        "available_pkg": [
+            avail_wheels.Wheel.parse_wheel_filename("available_pkg-2.0.0-py3-none-any.whl", "generic")
+        ],
+    }
+
+    result = avail_wheels.sort(wheels, ["name", "version", "arch", "python"], condense=False)
+    assert result == [
+        ["available_pkg", "2.0.0", "generic", "py3"],
+        ["missing_pkg", "", "", ""],
+    ]
+
+
+def test_sort_cpython_versions():
+    """
+    Test that Python versions >= 3.10 sort numerically descending in condensed view
+    (cp311 > cp310 > cp39 > cp38) rather than alphabetically (cp39 > cp38 > cp311 > cp310).
+    """
+    wheels = {
+        "xprec": [
+            avail_wheels.Wheel.parse_wheel_filename("xprec-1.3.8-cp38-cp38-linux_x86_64.whl", "generic"),
+            avail_wheels.Wheel.parse_wheel_filename("xprec-1.3.8-cp39-cp39-linux_x86_64.whl", "generic"),
+            avail_wheels.Wheel.parse_wheel_filename("xprec-1.3.8-cp310-cp310-linux_x86_64.whl", "generic"),
+            avail_wheels.Wheel.parse_wheel_filename("xprec-1.3.8-cp311-cp311-linux_x86_64.whl", "generic"),
+        ]
+    }
+
+    assert avail_wheels.sort(wheels, ["name", "version", "python", "arch"], condense=True) == [
+        ["xprec", "1.3.8", "cp311, cp310, cp39, cp38", "generic"]
+    ]
+
+    assert avail_wheels.sort(wheels, ["name", "version", "python", "arch"], condense=False) == [
+        ["xprec", "1.3.8", "cp311", "generic"],
+        ["xprec", "1.3.8", "cp310", "generic"],
+        ["xprec", "1.3.8", "cp39", "generic"],
+        ["xprec", "1.3.8", "cp38", "generic"],
+    ]
+
+
+def test_sort_multiple_localversion():
+    """
+    Test sorting wheels of the same package and version with multiple localversions,
+    verifying both row-by-row and condensed sorting.
+    """
+    wheels = {
+        "torch_scatter": [
+            avail_wheels.Wheel.parse_wheel_filename(
+                "torch_scatter-2.1.2+torch210.computecanada-cp311-cp311-linux_x86_64.whl", "generic"
+            ),
+            avail_wheels.Wheel.parse_wheel_filename(
+                "torch_scatter-2.1.2+torch212.computecanada-cp311-cp311-linux_x86_64.whl", "generic"
+            ),
+            avail_wheels.Wheel.parse_wheel_filename(
+                "torch_scatter-2.1.2+torch200.computecanada-cp311-cp311-linux_x86_64.whl", "generic"
+            ),
+        ]
+    }
+
+    # Row-by-row sort: local versions sort descending
+    assert avail_wheels.sort(wheels, ["name", "version", "localversion", "python", "arch"], condense=False) == [
+        ["torch_scatter", "2.1.2", "torch212.computecanada", "cp311", "generic"],
+        ["torch_scatter", "2.1.2", "torch210.computecanada", "cp311", "generic"],
+        ["torch_scatter", "2.1.2", "torch200.computecanada", "cp311", "generic"],
+    ]
+
+    # Condensed view: local versions joined and sorted descending
+    assert avail_wheels.sort(wheels, ["name", "version", "localversion", "python", "arch"], condense=True) == [
+        ["torch_scatter", "2.1.2", "torch212.computecanada, torch210.computecanada, torch200.computecanada", "cp311", "generic"],
     ]
 
 
@@ -331,7 +664,7 @@ def test_get_wheels_all_archs_all_pythons(wheelhouse):
             avail_wheels.Wheel.parse_wheel_filename("scipy-1.1.0-cp35-cp35m-linux_x86_64.whl", "generic"),
             avail_wheels.Wheel.parse_wheel_filename("scipy-1.1.0-cp27-cp27mu-linux_x86_64.whl", "generic"),
         ]),
-        "tensorflow_gpu": unordered([
+        "tensorflow-gpu": unordered([
             avail_wheels.Wheel.parse_wheel_filename("tensorflow_gpu-1.8.0+computecanada-cp36-cp36m-linux_x86_64.whl", "avx2"),
             avail_wheels.Wheel.parse_wheel_filename("tensorflow_gpu-1.8.0+computecanada-cp35-cp35m-linux_x86_64.whl", "avx2"),
             avail_wheels.Wheel.parse_wheel_filename("tensorflow_gpu-1.8.0+computecanada-cp27-cp27mu-linux_x86_64.whl", "avx2"),
@@ -488,12 +821,16 @@ def test_parse_args_default_noarch(monkeypatch):
     assert avail_wheels.create_argparser().get_default("arch") is None
 
 
-@venv
-def test_parse_args_default_python_venv(monkeypatch):
+def test_parse_args_default_python_venv(monkeypatch, tmp_path):
     """
     Test that default argument parser value for --python is provided by VIRTUAL_ENV.
-    Expects a python 3.11 virtual environment activated.
+    Uses a fake virtual environment with a pyvenv.cfg file.
     """
+    fake_venv = tmp_path / "venv"
+    fake_venv.mkdir()
+    (fake_venv / "pyvenv.cfg").write_text("home = /fake/bin\nversion = 3.11.4\n")
+
+    monkeypatch.setenv("VIRTUAL_ENV", str(fake_venv))
     monkeypatch.delenv("EBVERSIONPYTHON", raising=False)
 
     avail_wheels.env = RuntimeEnvironment()
@@ -502,12 +839,28 @@ def test_parse_args_default_python_venv(monkeypatch):
 
 def test_parse_args_default_python_module(monkeypatch):
     """ Test that default argument parser value for --python is provided by EBVERSIONPYTHON. """
-    # TODO: add test for virtual env.
     monkeypatch.delenv("VIRTUAL_ENV", raising=False)
     monkeypatch.setenv("EBVERSIONPYTHON", "3.6.10")
 
     avail_wheels.env = RuntimeEnvironment()
     assert avail_wheels.create_argparser().get_default("python") == ["3.6"]
+
+
+def test_parse_args_default_python_venv_precedence_over_module(monkeypatch, tmp_path):
+    """
+    Test that VIRTUAL_ENV has precedence over EBVERSIONPYTHON when a virtualenv
+    is activated and a module with a different Python version is loaded.
+    """
+    fake_venv = tmp_path / "venv"
+    fake_venv.mkdir()
+    (fake_venv / "pyvenv.cfg").write_text("home = /fake/bin\nversion = 3.11.4\n")
+
+    monkeypatch.setenv("VIRTUAL_ENV", str(fake_venv))
+    monkeypatch.setenv("EBVERSIONPYTHON", "3.8.2")
+
+    avail_wheels.env = RuntimeEnvironment()
+    assert avail_wheels.env.current_python == "3.11"
+    assert avail_wheels.create_argparser().get_default("python") == ["3.11"]
 
 
 @cvmfs
@@ -581,7 +934,7 @@ def test_parse_args_default_mediawiki():
 
 def test_parse_args_version():
     """ Test that --version is and support the wildcard version. """
-    version = "1.2*"
+    version = "1.2.*"
     args = avail_wheels.create_argparser().parse_args(["--version", version])
     assert isinstance(args.specifier, packaging.specifiers.SpecifierSet)
     assert args.specifier == packaging.specifiers.SpecifierSet(f"=={version}")
@@ -610,6 +963,7 @@ def test_parse_args_all_archs():
     assert args.all_archs
 
 
+@pytest.mark.skipif(int(os.environ.get('EBVERSIONGENTOO', -1)) != 2020, reason="StdEnv 2020 test")
 def test_parse_args_many_arch():
     """ Test that --arch is a list of given values. """
     arch = ["avx2", "avx"]
@@ -702,11 +1056,24 @@ def test_parse_args_requirement_files():
     assert args.requirements == ["requirement.txt", "reqs.txt"]
 
 
+def test_parse_args_default_condense():
+    """Test that default argument parser value for --condense is False."""
+    assert not avail_wheels.create_argparser().get_default("condense")
+
+
+def test_parse_args_condense():
+    """Test that --condense sets condense to True."""
+    args = avail_wheels.create_argparser().parse_args(["--condense"])
+    assert isinstance(args.condense, bool)
+    assert args.condense
+
+
 def test_is_compatible_true(python_dirs):
     """ Test that wheel is compatible. """
     avail_wheels.env = RuntimeEnvironment()
     wheel = avail_wheels.Wheel.parse_wheel_filename("netCDF4-1.3.1-cp27-cp27mu-linux_x86_64.whl")
-    assert avail_wheels.is_compatible(wheel, ["2.7"])
+    python_tags = avail_wheels.env.compatible_tags["2.7"]
+    assert avail_wheels.is_compatible(wheel, python_tags)
 
 
 def test_is_compatible_compressed_tags_true(python_dirs):
@@ -714,24 +1081,28 @@ def test_is_compatible_compressed_tags_true(python_dirs):
     avail_wheels.env = RuntimeEnvironment()
 
     wheel = avail_wheels.Wheel.parse_wheel_filename("shiboken2-5.15.0-5.15.0-cp35.cp36.cp37.cp38-abi3-linux_x86_64.whl")
-    assert avail_wheels.is_compatible(wheel, ["3.8"])
+    python_tags = avail_wheels.env.compatible_tags["3.8"]
+    assert avail_wheels.is_compatible(wheel, python_tags)
 
     wheel = avail_wheels.Wheel.parse_wheel_filename("pydicom-1.1.0-1-py2.py3-none-any.whl")
-    assert avail_wheels.is_compatible(wheel, ["3.9"])
+    python_tags = avail_wheels.env.compatible_tags["3.9"]
+    assert avail_wheels.is_compatible(wheel, python_tags)
 
 
 def test_is_compatible_false(python_dirs):
     """ Test that wheel is not compatible for a given python. """
     avail_wheels.env = RuntimeEnvironment()
     wheel = avail_wheels.Wheel.parse_wheel_filename("netCDF4-1.3.1-cp39-cp39-linux_x86_64.whl")
-    assert not avail_wheels.is_compatible(wheel, ["2.7"])
+    python_tags = avail_wheels.env.compatible_tags["2.7"]
+    assert not avail_wheels.is_compatible(wheel, python_tags)
 
 
 def test_is_compatible_many(python_dirs):
     """ Test that wheel is compatible for many given python. """
     avail_wheels.env = RuntimeEnvironment()
     wheel = avail_wheels.Wheel.parse_wheel_filename("netCDF4-1.3.1-cp27-cp27mu-linux_x86_64.whl")
-    assert avail_wheels.is_compatible(wheel, ["2.7", "3.8"])
+    python_tags = frozenset().union(*(avail_wheels.env.compatible_tags[p] for p in ["2.7", "3.8"]))
+    assert avail_wheels.is_compatible(wheel, python_tags)
 
 
 def test_match_file_sensitive_true():
@@ -777,8 +1148,8 @@ def test_get_rexes():
     """
 
     rexes = [
-        re.compile(translate(pattern), re.IGNORECASE)
-        for pattern in ["numpy-*.whl", "Scikit-learn-*.whl"]
+        re.compile(translate(f"{re.sub(r'[-_.]+', '[-_.]', name)}-*.whl"), re.IGNORECASE)
+        for name in ["numpy", "Scikit-learn"]
     ]
     assert avail_wheels.get_rexes(["numpy", "Scikit-learn"]) == rexes
 
@@ -854,6 +1225,13 @@ def test_filter_search_paths_arch():
     ]
 
 
+def test_filter_search_paths_no_match():
+    """Test that an empty list is returned when no paths match the filter."""
+
+    search_paths = [f"path/{p}" for p in ("avx2", "generic")]
+    assert avail_wheels.filter_search_paths(search_paths, ["avx512"]) == []
+
+
 def test_search_paths_no_pip_config_file(monkeypatch, wheelhouse):
     """
     Test that no PIP_CONFIG_FILE environment variable exists.
@@ -912,6 +1290,7 @@ def test_search_paths_pip_config_file_exists(monkeypatch, pip_config_file):
     Test that PIP_CONFIG_FILE environment variable exists and use the configuration file.
     """
     monkeypatch.setenv("PIP_CONFIG_FILE", str(pip_config_file))
+    avail_wheels.env = RuntimeEnvironment()
 
     other = [
         f"{pip_config_file.parent}/wheelhouse/gentoo/avx2",
@@ -942,17 +1321,46 @@ def test_make_requirement_wildname_suffix():
 
 def test_make_requirement_wildname_version():
     """ Test that requirement with wildcard in name and version is valid. """
+    # Exact version
     assert avail_wheels.make_requirement("*name*==1.2") == Requirement("*name*==1.2")
-    assert avail_wheels.make_requirement("*name*==1.2*") == Requirement("*name*==1.2*")
+    assert avail_wheels.make_requirement("name*==1.2.3") == Requirement("name*==1.2.3")
+    assert avail_wheels.make_requirement("name*-*==1.2.3") == Requirement("name*-*==1.2.3")
+
+    # Wildcard versions (with dot)
     assert avail_wheels.make_requirement("*name*==1.2.*") == Requirement("*name*==1.2.*")
+    assert avail_wheels.make_requirement("*name*==1.*") == Requirement("*name*==1.*")
+    assert avail_wheels.make_requirement("name*-*==1.2.3.*") == Requirement("name*-*==1.2.3.*")
+
+
+def test_make_requirement_wildname_version_ranges():
+    """ Test that requirement with wildcard in name and version ranges is valid. """
+    # Single inequality and compatibility ranges
+    assert avail_wheels.make_requirement("*name*>=1.2") == Requirement("*name*>=1.2")
+    assert avail_wheels.make_requirement("*name*>1.2") == Requirement("*name*>1.2")
+    assert avail_wheels.make_requirement("*name*<=2.0") == Requirement("*name*<=2.0")
+    assert avail_wheels.make_requirement("*name*<2.0") == Requirement("*name*<2.0")
+    assert avail_wheels.make_requirement("*name*~=1.2.0") == Requirement("*name*~=1.2.0")
+    assert avail_wheels.make_requirement("*name*!=1.2.3") == Requirement("*name*!=1.2.3")
+
+    # Exclusion with wildcards
+    assert avail_wheels.make_requirement("*name*!=1.2.*") == Requirement("*name*!=1.2.*")
+
+    # Compound ranges (intervals)
+    assert avail_wheels.make_requirement("*name*>=1.2,<2.0") == Requirement("*name*>=1.2,<2.0")
+    assert avail_wheels.make_requirement("*name*>1.0,<=2.5.0") == Requirement("*name*>1.0,<=2.5.0")
+    assert avail_wheels.make_requirement("*name*>=1.0,<2.0,!=1.5") == Requirement("*name*>=1.0,<2.0,!=1.5")
+    assert avail_wheels.make_requirement("*name*>=1.0,!=1.2.*") == Requirement("*name*>=1.0,!=1.2.*")
+
+    # Parenthesized range with spaces
+    assert avail_wheels.make_requirement("*name*(>=1.2, <2.0)") == Requirement("*name*(>=1.2, <2.0)")
 
 
 def test_make_requirement_invalid():
     """ Test that an exception is raise when an invalid requirement is given """
     with pytest.raises(Exception):
-        avail_wheels.make_requirement("*na*e*")
-
-    with pytest.raises(Exception):
+        avail_wheels.make_requirement("pennylane-*-")
+        avail_wheels.make_requirement("climlab--radiation")
+        avail_wheels.make_requirement("--")
         avail_wheels.make_requirement("*")
 
 
@@ -963,12 +1371,52 @@ def test_make_requirement_localversion():
     assert avail_wheels.make_requirement("name+a.b.c") == Requirement("name")
 
 
+def test_make_requirement_named_vcs():
+    """ Test that named VCS requirements (e.g. 'gwcs @ git+...') are accepted and name extracted. """
+    req_git = "gwcs @ git+https://github.com/spacetelescope/gwcs.git@master"
+    assert avail_wheels.make_requirement(req_git) == Requirement("gwcs")
+
+    req_main = "stcal @ git+https://github.com/spacetelescope/stcal.git@main"
+    assert avail_wheels.make_requirement(req_main) == Requirement("stcal")
+
+
+def test_make_requirement_bare_url_skipped():
+    """ Test that bare URLs without package name are warned and skipped (return None). """
+    with pytest.warns(UserWarning, match="Skipping unsupported URL requirement format"):
+        assert avail_wheels.make_requirement("git+https://github.com/spacetelescope/gwcs.git") is None
+
+    with pytest.warns(UserWarning, match="Skipping unsupported URL requirement format"):
+        assert avail_wheels.make_requirement("git+https://github.com/spacetelescope/gwcs.git@master") is None
+
+    with pytest.warns(UserWarning, match="Skipping unsupported URL requirement format"):
+        assert avail_wheels.make_requirement("https://github.com/spacetelescope/gwcs.git@master") is None
+
+
 def test_make_eq_specifier():
     """ Test that SpecifierSet is valid. """
-    assert avail_wheels.make_eq_specifier("*") == packaging.specifiers.SpecifierSet("==*")
     assert avail_wheels.make_eq_specifier("1.2") == packaging.specifiers.SpecifierSet("==1.2")
-    assert avail_wheels.make_eq_specifier("1.2*") == packaging.specifiers.SpecifierSet("==1.2*")
     assert avail_wheels.make_eq_specifier("1.2.*") == packaging.specifiers.SpecifierSet("==1.2.*")
+
+
+@pytest.mark.parametrize("invalid_version", [
+    "invalid..version",
+    "not_a_valid_version",
+    "!",
+    "",
+    "*",
+    "a",
+    "2.1.",
+    "1.2*",
+    "*.*.*",
+    ".1.0.0"
+])
+def test_make_eq_specifier_invalid(invalid_version):
+    """
+    Test that make_eq_specifier raises ArgumentTypeError
+    when given an invalid version string (lines 469-470).
+    """
+    with pytest.raises(ArgumentTypeError, match=re.escape(f"Invalid version: {invalid_version!r}.")):
+        avail_wheels.make_eq_specifier(invalid_version)
 
 
 def test_get_requirements_set_requirements_file(tmp_path):
@@ -985,8 +1433,8 @@ def test_get_requirements_set_requirements_file(tmp_path):
 
     assert avail_wheels.get_requirements_set(args) == {
         "numpy": Requirement("numpy"),
-        "dgl_cpu": Requirement("dgl_cpu"),
-        "ab.py": Requirement("ab.py==1.9"),
+        "dgl-cpu": Requirement("dgl_cpu"),
+        "ab-py": Requirement("ab.py==1.9"),
         "scipy": Requirement("scipy"),
         "dummy": Requirement("dummy~=4.0.0"),
     }
@@ -1006,9 +1454,9 @@ def test_get_requirements_set_requirements_file_and_names(tmp_path):
 
     assert avail_wheels.get_requirements_set(args) == {
         "torch": Requirement("torch"),
-        "dgl_cpu": Requirement("dgl_cpu==1.0"),
+        "dgl-cpu": Requirement("dgl_cpu==1.0"),
         "numpy": Requirement("numpy"),
-        "ab.py": Requirement("ab.py==1.9"),
+        "ab-py": Requirement("ab.py==1.9"),
     }
 
 
@@ -1022,7 +1470,178 @@ def test_get_requirements_set_from_names():
 
     assert avail_wheels.get_requirements_set(args) == {
         "torch": Requirement("torch"),
-        "dgl_cpu": Requirement("dgl_cpu"),
-        "ab.py": Requirement("ab.py==1.9"),
+        "dgl-cpu": Requirement("dgl_cpu"),
+        "ab-py": Requirement("ab.py==1.9"),
         "dummy": Requirement("dummy==4")
     }
+
+
+def test_get_requirements_set_from_names_with_version():
+    """
+    Test that requirements set from command line combines package names with --version.
+    """
+    args = avail_wheels.create_argparser().parse_args(["torch", "-n", "dgl-cpu", "--version", "2.0.0"])
+
+    assert avail_wheels.get_requirements_set(args) == {
+        "torch": Requirement("torch==2.0.0"),
+        "dgl-cpu": Requirement("dgl_cpu==2.0.0"),
+    }
+
+
+def test_get_requirements_set_from_names_with_wildcard_version():
+    """
+    Test that requirements set from command line combines package names with wildcard --version.
+    """
+    args = avail_wheels.create_argparser().parse_args(["numpy", "-v", "1.2.*"])
+
+    assert avail_wheels.get_requirements_set(args) == {
+        "numpy": Requirement("numpy==1.2.*"),
+    }
+
+
+def test_get_requirements_set_pyproject_toml(tmp_path):
+    """
+    Test that requirements set can be parsed from a local pyproject.toml file.
+    """
+    p = tmp_path / "pyproject.toml"
+    p.write_text("""
+[project]
+name = "myproject"
+version = "0.1.0"
+dependencies = [
+    "numpy>=1.20",
+    "scipy",
+    "dgl-cpu==1.0",
+]
+""")
+    args = avail_wheels.create_argparser().parse_args(["--requirement", str(p)])
+    assert avail_wheels.get_requirements_set(args) == {
+        "numpy": Requirement("numpy>=1.20"),
+        "scipy": Requirement("scipy"),
+        "dgl-cpu": Requirement("dgl_cpu==1.0"),
+    }
+
+
+def test_get_requirements_set_pyproject_toml_url(monkeypatch):
+    """
+    Test that requirements set can be parsed from a pyproject.toml URL.
+    """
+    toml_content = b"""
+[project]
+name = "remote-project"
+dependencies = [
+    "numpy",
+    "torch>=2.0",
+]
+"""
+    class MockResponse:
+        content = toml_content
+        text = toml_content.decode("utf-8")
+        def raise_for_status(self):
+            pass
+
+    from pip._internal.network.session import PipSession
+    monkeypatch.setattr(PipSession, "get", lambda self, url: MockResponse())
+
+    url = "https://raw.githubusercontent.com/example/repo/main/pyproject.toml"
+    args = avail_wheels.create_argparser().parse_args(["--requirement", url])
+
+    assert avail_wheels.get_requirements_set(args) == {
+        "numpy": Requirement("numpy"),
+        "torch": Requirement("torch>=2.0"),
+    }
+
+
+def test_remove_duplicates_wheel_filenames_no_duplicates():
+    """Test that a list of distinct wheel filenames is preserved as-is."""
+    wheels = [
+        "numpy-1.25.0-cp39-cp39-linux_x86_64.whl",
+        "scipy-1.11.0-cp39-cp39-linux_x86_64.whl",
+        "torch-2.1.0-cp310-cp310-linux_x86_64.whl",
+    ]
+    assert avail_wheels.remove_duplicates(wheels) == wheels
+
+
+def test_remove_duplicates_wheel_filenames_consecutive():
+    """Test removing adjacent duplicate wheel filenames (e.g. from multiple search paths)."""
+    wheels = [
+        "numpy-1.25.0-cp39-cp39-linux_x86_64.whl",
+        "numpy-1.25.0-cp39-cp39-linux_x86_64.whl",
+        "scipy-1.11.0-cp310-cp310-linux_x86_64.whl",
+    ]
+    expected = [
+        "numpy-1.25.0-cp39-cp39-linux_x86_64.whl",
+        "scipy-1.11.0-cp310-cp310-linux_x86_64.whl",
+    ]
+    assert avail_wheels.remove_duplicates(wheels) == expected
+
+
+def test_remove_duplicates_wheel_filenames_non_consecutive_preserves_order():
+    """Test that order of first appearance is preserved when duplicates are scattered."""
+    wheels = [
+        "mmcv-2.1.0+torch211.computecanada-cp312-cp312-linux_x86_64.whl",
+        "mmcv-2.1.0+computecanada-cp310-cp310-linux_x86_64.whl",
+        "mmcv-2.1.0+torch211.computecanada-cp311-cp311-linux_x86_64.whl",
+        "mmcv-2.1.0+torch211.computecanada-cp312-cp312-linux_x86_64.whl",  # duplicate of index 0
+        "mmcv-2.1.0+computecanada-cp310-cp310-linux_x86_64.whl",          # duplicate of index 1
+    ]
+    expected = [
+        "mmcv-2.1.0+torch211.computecanada-cp312-cp312-linux_x86_64.whl",
+        "mmcv-2.1.0+computecanada-cp310-cp310-linux_x86_64.whl",
+        "mmcv-2.1.0+torch211.computecanada-cp311-cp311-linux_x86_64.whl",
+    ]
+    assert avail_wheels.remove_duplicates(wheels) == expected
+
+
+def test_remove_duplicates_wheel_filenames_all_identical():
+    """Test that a list where all filenames are identical reduces to a single entry."""
+    wheels = [
+        "causal_conv1d-1.1.3.post1+computecanada-cp310-cp310-linux_x86_64.whl",
+        "causal_conv1d-1.1.3.post1+computecanada-cp310-cp310-linux_x86_64.whl",
+        "causal_conv1d-1.1.3.post1+computecanada-cp310-cp310-linux_x86_64.whl",
+    ]
+    expected = [
+        "causal_conv1d-1.1.3.post1+computecanada-cp310-cp310-linux_x86_64.whl"
+    ]
+    assert avail_wheels.remove_duplicates(wheels) == expected
+
+
+def test_remove_duplicates_empty():
+    """Test empty input returns empty list."""
+    assert avail_wheels.remove_duplicates([]) == []
+
+
+def test_remove_duplicates_wheel_table_rows_default_columns():
+    """
+    Test deduplicating display rows when multiple wheels differ only by
+    local version (e.g. +torch211 vs +computecanada), which is not in the columns.
+    """
+    # Columns: [name, version, python, arch]
+    rows = [
+        ["mmcv", "2.1.0", "cp312", "generic"],
+        ["mmcv", "2.1.0", "cp311", "generic"],  # From mmcv-2.1.0+torch211...
+        ["mmcv", "2.1.0", "cp311", "generic"],  # From mmcv-2.1.0+computecanada... (DUPLICATE)
+        ["mmcv", "2.1.0", "cp310", "generic"],
+    ]
+    expected = [
+        ["mmcv", "2.1.0", "cp312", "generic"],
+        ["mmcv", "2.1.0", "cp311", "generic"],
+        ["mmcv", "2.1.0", "cp310", "generic"],
+    ]
+    assert avail_wheels.remove_duplicates(rows) == expected
+
+
+def test_remove_duplicates_wheel_table_rows_with_localversion():
+    """
+    Test that when localversion is present in columns, rows with different
+    local versions are NOT treated as duplicates and are both preserved.
+    """
+    # Columns: [name, version, localversion, python, arch]
+    rows = [
+        ["mmcv", "2.1.0", "torch211.computecanada", "cp312", "generic"],
+        ["mmcv", "2.1.0", "torch211.computecanada", "cp311", "generic"],
+        ["mmcv", "2.1.0", "computecanada",          "cp311", "generic"],  # Distinct localversion
+        ["mmcv", "2.1.0", "computecanada",          "cp310", "generic"],
+    ]
+    # All 4 rows are unique
+    assert avail_wheels.remove_duplicates(rows) == rows
