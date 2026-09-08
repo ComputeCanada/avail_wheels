@@ -105,6 +105,8 @@ class Wheel():
 
     @cached_property
     def loose_version(self):
+        if not self._version:
+            return ""
         return packaging.version.parse(self._version)
 
     @property
@@ -129,10 +131,14 @@ class Wheel():
 
     @property
     def version(self):
+        if not self._version:
+            return ""
         return self.loose_version.public
 
     @property
     def localversion(self):
+        if not self._version:
+            return ""
         return self.loose_version.local
 
     @property
@@ -293,14 +299,19 @@ def sort(wheels, columns, condense=False):
         """
         Sort key based on column:
           - 'version': semantic PEP 440 version parsing
-          - 'python': natural sorting (cp311 > cp310 > cp39)
+          - 'python', 'build': natural sorting (cp311 > cp310 > cp39)
           - other columns: standard string sorting
         """
         if column == "version":
-            key_fn = packaging.version.parse
-        elif column == "python":
-            key_fn = lambda x: [int(s) if s.isdigit() else s for s in re.split(r'(\d+)', x)]
+            # Parse a version string when not empty or None.
+            key_fn = lambda v: packaging.version.parse(v) if v else packaging.version.Version("0.0.0")
+        elif column in ("python", "build"):
+            # Natural/numeric sorting ensures multi-digit values sort numerically:
+            # For 'python': cp311 > cp310 > cp39 > cp38 (rather than alphabetical cp39 > cp311)
+            # For 'build': build 10 > 9 > 2 > 1 > "" (rather than alphabetical "9" > "10")
+            key_fn = lambda x: [int(s) if s.isdigit() else s for s in re.split(r'(\d+)', str(x or ""))]
         else:
+            # Other columns use standard string sort
             key_fn = str
 
         return key_fn(value) if value is not None else key_fn
@@ -308,19 +319,27 @@ def sort(wheels, columns, condense=False):
     ret = []
     sep = ", "
 
-    # Sort in-place, by name insensitively asc, then by version desc, then by arch desc, then by python desc
+    # Sort in-place, by name insensitively asc, then by version desc, then by build desc, then by arch desc, then by python desc
     # Since the sort is stable and Timsort can benefit from previous sort, this is fast.
     wheel_names = sorted(wheels.keys(), key=str.casefold)
     for wheel_name in wheel_names:
         wheel_list = wheels[wheel_name]
-        wheel_list.sort(key=lambda x: (x.loose_version, x.arch, loose_key("python", x.python)), reverse=True)
+        wheel_list.sort(
+            key=lambda x: (
+                x.loose_version,
+                loose_key("build", x.build),
+                x.arch,
+                loose_key("python", x.python),
+            ),
+            reverse=True,
+        )
 
         # Condense wheel information on one line.
         # For every column, every wheel, insert the tag into a uniq set, then join tag values and re-sort.
         # Otherwise, get the columns.
         if condense:
             row = [
-                sep.join(sorted({getattr(wheel, column) for wheel in wheel_list}, key=loose_key(column), reverse=True))
+                sep.join(sorted({getattr(wheel, column) or "" for wheel in wheel_list}, key=loose_key(column), reverse=True))
                 for column in columns
             ]
             ret.append(row)

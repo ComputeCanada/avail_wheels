@@ -302,8 +302,157 @@ def test_latest_versions_preserves_multiple_wheels_at_latest_version():
     assert all(w.version == "1.42.49" for w in latests["botocore"])
 
 
-@pytest.fixture
-def to_be_sorted_wheels():
+def test_sort_type():
+    """ Test that sort method return type is a list. """
+    assert isinstance(avail_wheels.sort({}, None), list)
+
+
+def test_sort_build_tag():
+    """Test that wheels with build tags sort descending by build tag."""
+    wheels = {
+        "pydicom": [
+            avail_wheels.Wheel.parse_wheel_filename("pydicom-1.1.0-1-py2.py3-none-any.whl", "generic"),
+            avail_wheels.Wheel.parse_wheel_filename("pydicom-1.1.0-2-py2.py3-none-any.whl", "generic"),
+            avail_wheels.Wheel.parse_wheel_filename("pydicom-1.1.0-py2.py3-none-any.whl", "generic"),
+        ],
+        "name": [
+            avail_wheels.Wheel.parse_wheel_filename("name-1.1-10-py2.py3-none-any.whl", "generic"),
+            avail_wheels.Wheel.parse_wheel_filename("name-1.1-9-py2.py3-none-any.whl", "generic"),
+            avail_wheels.Wheel.parse_wheel_filename("name-1.1-8-py2.py3-none-any.whl", "generic"),
+        ],
+    }
+    # Row-by-row sort
+    assert avail_wheels.sort(wheels, ["name", "version", "build"]) == [
+        ["name", "1.1", "10"],
+        ["name", "1.1", "9"],
+        ["name", "1.1", "8"],
+        ["pydicom", "1.1.0", "2"],
+        ["pydicom", "1.1.0", "1"],
+        ["pydicom", "1.1.0", ""],
+    ]
+
+    # Condensed view
+    assert avail_wheels.sort(wheels, ["name", "version", "build"], condense=True) == [
+        ["name", "1.1", "10, 9, 8"],
+        ["pydicom", "1.1.0", "2, 1, "],
+    ]
+
+
+def test_sort_version_semantic_not_alphabetical():
+    """
+    Test that versions are sorted by PEP 440 semantic order
+    (1.10.0 > 1.9.0 > 1.2.0 > 1.2.0a1) rather than lexicographical order (1.9.0 > 1.2.0 > 1.10.0).
+    """
+    wheels = {
+        "demo": [
+            avail_wheels.Wheel.parse_wheel_filename("demo-1.2.0-py3-none-any.whl", "generic"),
+            avail_wheels.Wheel.parse_wheel_filename("demo-1.10.0-py3-none-any.whl", "generic"),
+            avail_wheels.Wheel.parse_wheel_filename("demo-1.9.0-py3-none-any.whl", "generic"),
+            avail_wheels.Wheel.parse_wheel_filename("demo-1.2.0a1-py3-none-any.whl", "generic"),
+        ]
+    }
+
+    # Columns view
+    assert avail_wheels.sort(wheels, ["name", "version"], condense=False) == [
+        ["demo", "1.10.0"],
+        ["demo", "1.9.0"],
+        ["demo", "1.2.0"],
+        ["demo", "1.2.0a1"],
+    ]
+
+    # Condensed view
+    assert avail_wheels.sort(wheels, ["name", "version"], condense=True) == [
+        ["demo", "1.10.0, 1.9.0, 1.2.0, 1.2.0a1"]
+    ]
+
+
+def test_sort_case_insensitive_name_order():
+    """Test that package names sort case-insensitively ascending (str.casefold)."""
+    wheels = {
+        "scipy": [avail_wheels.Wheel.parse_wheel_filename("scipy-1.0.0-py3-none-any.whl", "generic")],
+        "NetCDF4": [avail_wheels.Wheel.parse_wheel_filename("NetCDF4-1.0.0-py3-none-any.whl", "generic")],
+        "arrow": [avail_wheels.Wheel.parse_wheel_filename("arrow-1.0.0-py3-none-any.whl", "generic")],
+        "PyDICOM": [avail_wheels.Wheel.parse_wheel_filename("PyDICOM-1.0.0-py3-none-any.whl", "generic")],
+    }
+    result = avail_wheels.sort(wheels, ["name"], condense=True)
+    assert result == [
+        ["arrow"],
+        ["NetCDF4"],
+        ["PyDICOM"],
+        ["scipy"],
+    ]
+
+
+def test_sort_multi_key_precedence():
+    """
+    Test tie-breaking precedence:
+    1. Version descending
+    2. Architecture descending
+    3. Python version descending
+    """
+    wheels = {
+        "pkg": [
+            # Same version (1.0), different arch
+            avail_wheels.Wheel.parse_wheel_filename("pkg-1.0-cp38-cp38-linux_x86_64.whl", "generic"),
+            avail_wheels.Wheel.parse_wheel_filename("pkg-1.0-cp38-cp38-linux_x86_64.whl", "sse3"),
+            avail_wheels.Wheel.parse_wheel_filename("pkg-1.0-cp38-cp38-linux_x86_64.whl", "avx2"),
+            # Same version (1.0), same arch (avx2), different pythons
+            avail_wheels.Wheel.parse_wheel_filename("pkg-1.0-cp311-cp311-linux_x86_64.whl", "avx2"),
+            avail_wheels.Wheel.parse_wheel_filename("pkg-1.0-cp39-cp39-linux_x86_64.whl", "avx2"),
+            # Higher version (2.0) should be first regardless of arch
+            avail_wheels.Wheel.parse_wheel_filename("pkg-2.0-cp38-cp38-linux_x86_64.whl", "generic"),
+        ]
+    }
+
+    assert avail_wheels.sort(wheels, ["name", "version", "arch", "python"]) == [
+        ["pkg", "2.0", "generic", "cp38"],
+        ["pkg", "1.0", "sse3", "cp38"],
+        ["pkg", "1.0", "generic", "cp38"],
+        ["pkg", "1.0", "avx2", "cp311"],
+        ["pkg", "1.0", "avx2", "cp39"],
+        ["pkg", "1.0", "avx2", "cp38"],
+    ]
+
+
+def test_sort_removes_duplicate_rows():
+    """
+    Test that selecting a column subset deduplicates rows that become identical.
+    """
+    wheels = {
+        "numpy": [
+            avail_wheels.Wheel.parse_wheel_filename("numpy-1.25.0-cp39-cp39-linux_x86_64.whl", "avx2"),
+            avail_wheels.Wheel.parse_wheel_filename("numpy-1.25.0-cp39-cp39-linux_x86_64.whl", "generic"),
+            avail_wheels.Wheel.parse_wheel_filename("numpy-1.25.0-cp310-cp310-linux_x86_64.whl", "avx2"),
+            avail_wheels.Wheel.parse_wheel_filename("numpy-1.24.0-cp39-cp39-linux_x86_64.whl", "generic"),
+        ]
+    }
+    # When only requesting ['name', 'version'], multiple 1.25.0 wheels collapse into one row
+    assert avail_wheels.sort(wheels, ["name", "version"]) == [
+        ["numpy", "1.25.0"],
+        ["numpy", "1.24.0"],
+    ]
+
+
+@pytest.mark.parametrize(
+    "columns, expected_row",
+    [
+        (["name", "version"], ["pkg", "1.0.0"]),
+        (["version", "name"], ["1.0.0", "pkg"]),
+        (["arch", "python", "version", "name"], ["generic", "cp39", "1.0.0", "pkg"]),
+        (["platform", "abi", "build"], ["linux_x86_64", "cp39", ""]),
+    ],
+)
+def test_sort_arbitrary_column_order(columns, expected_row):
+    """Test that output columns strictly follow the requested column ordering."""
+    wheels = {"pkg": [avail_wheels.Wheel.parse_wheel_filename("pkg-1.0.0-cp39-cp39-linux_x86_64.whl", "generic")]}
+    assert avail_wheels.sort(wheels, columns) == [expected_row]
+
+
+def test_sort_condense_all_columns():
+    """
+    Test that sort with condense=True works across all AVAILABLE_HEADERS:
+    ['name', 'version', 'localversion', 'build', 'python', 'abi', 'platform', 'arch']
+    """
     wheels = {
         "netCDF4": [
             avail_wheels.Wheel.parse_wheel_filename("netCDF4-1.3.1-cp27-cp27mu-linux_x86_64.whl", "avx"),
@@ -319,9 +468,9 @@ def to_be_sorted_wheels():
             avail_wheels.Wheel.parse_wheel_filename("netCDF4-1.2.8-cp27-cp27mu-linux_x86_64.whl", "generic"),
         ],
         "botocore": [
-            avail_wheels.Wheel.parse_wheel_filename("botocore-1.10.63-py2.py3-none-any.whl", "generic",),
-            avail_wheels.Wheel.parse_wheel_filename("botocore-1.9.5-py2.py3-none-any.whl", "generic",),
-            avail_wheels.Wheel.parse_wheel_filename("botocore-1.10.57-py2.py3-none-any.whl", "generic",),
+            avail_wheels.Wheel.parse_wheel_filename("botocore-1.10.63-py2.py3-none-any.whl", "generic"),
+            avail_wheels.Wheel.parse_wheel_filename("botocore-1.9.5-py2.py3-none-any.whl", "generic"),
+            avail_wheels.Wheel.parse_wheel_filename("botocore-1.10.57-py2.py3-none-any.whl", "generic"),
             avail_wheels.Wheel.parse_wheel_filename("botocore-1.9.11-py2.py3-none-any.whl", "generic"),
         ],
         "pydicom": [
@@ -334,54 +483,41 @@ def to_be_sorted_wheels():
         ],
     }
 
-    wheels["netCDF4"].reverse()
-    return wheels
-
-
-def test_sort_type():
-    """ Test that sort method return type is a list. """
-    assert isinstance(avail_wheels.sort({}, None), list)
-
-
-def test_sort_columns(to_be_sorted_wheels):
-    """ Test that sort returns wheels grouped by name, sorted desc by version, python, arch """
-
-    # TODO: Break down the sort tests into columns tests
-    # TODO: Add test with a build
-    assert avail_wheels.sort(to_be_sorted_wheels, ['name', 'version', 'build', 'python', 'arch']) == [
-        ["botocore", "1.10.63", "", "py2,py3", "generic"],
-        ["botocore", "1.10.57", "", "py2,py3", "generic"],
-        ["botocore", "1.9.11", "", "py2,py3", "generic"],
-        ["botocore", "1.9.5", "", "py2,py3", "generic"],
-        ["netCDF4", "1.4.0", "", "cp27", "generic"],
-        ["netCDF4", "1.3.1", "", "cp36", "sse3"],
-        ["netCDF4", "1.3.1", "", "cp35", "sse3"],
-        ["netCDF4", "1.3.1", "", "cp27", "sse3"],
-        ["netCDF4", "1.3.1", "", "cp36", "avx2"],
-        ["netCDF4", "1.3.1", "", "cp35", "avx2"],
-        ["netCDF4", "1.3.1", "", "cp27", "avx2"],
-        ["netCDF4", "1.3.1", "", "cp36", "avx"],
-        ["netCDF4", "1.3.1", "", "cp35", "avx"],
-        ["netCDF4", "1.3.1", "", "cp27", "avx"],
-        ["netCDF4", "1.2.8", "", "cp27", "generic"],
-        ["pydicom", "1.1.0", "1", "py2,py3", "generic"],
-        ["pydicom", "0.9.9", "", "py3", "generic"],
-        ["torch_cpu", "0.4.0", "", "cp36", "avx2"],
-        ["torch_cpu", "0.2.0", "", "cp27", "avx2"],
+    assert avail_wheels.sort(wheels, avail_wheels.AVAILABLE_HEADERS, condense=True) == [
+        ["botocore", "1.10.63, 1.10.57, 1.9.11, 1.9.5", "", "", "py2,py3", "none", "any", "generic"],
+        ["netCDF4", "1.4.0, 1.3.1, 1.2.8", "", "", "cp36, cp35, cp27", "cp36m, cp35m, cp27mu", "linux_x86_64", "sse3, generic, avx2, avx"],
+        ["pydicom", "1.1.0, 0.9.9", "", "1, ", "py3, py2,py3", "none", "any", "generic"],
+        ["torch_cpu", "0.4.0, 0.2.0", "d8f3c60, ", "", "cp36, cp27", "cp36m, cp27mu", "linux_x86_64", "avx2"],
     ]
 
 
-def test_sort_condense(to_be_sorted_wheels):
-    """ Test that sort return condensed information on one line. """
-    assert avail_wheels.sort(to_be_sorted_wheels, ['name', 'version', 'build', 'python', 'arch'], True) == [
-        ["botocore", "1.10.63, 1.10.57, 1.9.11, 1.9.5", "", "py2,py3", "generic"],
-        ["netCDF4", "1.4.0, 1.3.1, 1.2.8", "", "cp36, cp35, cp27", "sse3, generic, avx2, avx"],
-        ["pydicom", "1.1.0, 0.9.9", "1, ", "py3, py2,py3", "generic"],
-        ["torch_cpu", "0.4.0, 0.2.0", "", "cp36, cp27", "avx2"],
+def test_sort_empty():
+    """Test sort with empty dict and empty wheel list."""
+    assert avail_wheels.sort({}, ["name", "version"]) == []
+    assert avail_wheels.sort({"pkg": []}, ["name", "version"]) == []
+
+
+def test_sort_unavailable_wheels_with_empty_fields():
+    """
+    Test sorting wheels that have empty attributes (such as not-available wheels).
+    Should not raise AttributeError or InvalidVersion.
+    """
+    unavail_wheel = avail_wheels.Wheel(filename="missing_pkg", name="missing_pkg")
+    wheels = {
+        "missing_pkg": [unavail_wheel],
+        "available_pkg": [
+            avail_wheels.Wheel.parse_wheel_filename("available_pkg-2.0.0-py3-none-any.whl", "generic")
+        ],
+    }
+
+    result = avail_wheels.sort(wheels, ["name", "version", "arch", "python"], condense=False)
+    assert result == [
+        ["available_pkg", "2.0.0", "generic", "py3"],
+        ["missing_pkg", "", "", ""],
     ]
 
 
-def test_sort_cpython_versions_condense():
+def test_sort_cpython_versions():
     """
     Test that Python versions >= 3.10 sort numerically descending in condensed view
     (cp311 > cp310 > cp39 > cp38) rather than alphabetically (cp39 > cp38 > cp311 > cp310).
@@ -399,26 +535,43 @@ def test_sort_cpython_versions_condense():
         ["xprec", "1.3.8", "cp311, cp310, cp39, cp38", "generic"]
     ]
 
-
-def test_sort_cpython_versions_columns():
-    """
-    Test that Python versions >= 3.10 sort numerically descending across rows
-    when condense=False.
-    """
-    wheels = {
-        "xprec": [
-            avail_wheels.Wheel.parse_wheel_filename("xprec-1.3.8-cp38-cp38-linux_x86_64.whl", "generic"),
-            avail_wheels.Wheel.parse_wheel_filename("xprec-1.3.8-cp39-cp39-linux_x86_64.whl", "generic"),
-            avail_wheels.Wheel.parse_wheel_filename("xprec-1.3.8-cp310-cp310-linux_x86_64.whl", "generic"),
-            avail_wheels.Wheel.parse_wheel_filename("xprec-1.3.8-cp311-cp311-linux_x86_64.whl", "generic"),
-        ]
-    }
-
     assert avail_wheels.sort(wheels, ["name", "version", "python", "arch"], condense=False) == [
         ["xprec", "1.3.8", "cp311", "generic"],
         ["xprec", "1.3.8", "cp310", "generic"],
         ["xprec", "1.3.8", "cp39", "generic"],
         ["xprec", "1.3.8", "cp38", "generic"],
+    ]
+
+
+def test_sort_multiple_localversion():
+    """
+    Test sorting wheels of the same package and version with multiple localversions,
+    verifying both row-by-row and condensed sorting.
+    """
+    wheels = {
+        "torch_scatter": [
+            avail_wheels.Wheel.parse_wheel_filename(
+                "torch_scatter-2.1.2+torch210.computecanada-cp311-cp311-linux_x86_64.whl", "generic"
+            ),
+            avail_wheels.Wheel.parse_wheel_filename(
+                "torch_scatter-2.1.2+torch212.computecanada-cp311-cp311-linux_x86_64.whl", "generic"
+            ),
+            avail_wheels.Wheel.parse_wheel_filename(
+                "torch_scatter-2.1.2+torch200.computecanada-cp311-cp311-linux_x86_64.whl", "generic"
+            ),
+        ]
+    }
+
+    # Row-by-row sort: local versions sort descending
+    assert avail_wheels.sort(wheels, ["name", "version", "localversion", "python", "arch"], condense=False) == [
+        ["torch_scatter", "2.1.2", "torch212.computecanada", "cp311", "generic"],
+        ["torch_scatter", "2.1.2", "torch210.computecanada", "cp311", "generic"],
+        ["torch_scatter", "2.1.2", "torch200.computecanada", "cp311", "generic"],
+    ]
+
+    # Condensed view: local versions joined and sorted descending
+    assert avail_wheels.sort(wheels, ["name", "version", "localversion", "python", "arch"], condense=True) == [
+        ["torch_scatter", "2.1.2", "torch212.computecanada, torch210.computecanada, torch200.computecanada", "cp311", "generic"],
     ]
 
 
@@ -806,6 +959,18 @@ def test_parse_args_requirement_files():
 
     assert isinstance(args.requirements, list)
     assert args.requirements == ["requirement.txt", "reqs.txt"]
+
+
+def test_parse_args_default_condense():
+    """Test that default argument parser value for --condense is False."""
+    assert not avail_wheels.create_argparser().get_default("condense")
+
+
+def test_parse_args_condense():
+    """Test that --condense sets condense to True."""
+    args = avail_wheels.create_argparser().parse_args(["--condense"])
+    assert isinstance(args.condense, bool)
+    assert args.condense
 
 
 def test_is_compatible_true(python_dirs):
