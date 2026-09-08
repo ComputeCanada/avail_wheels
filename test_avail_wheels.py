@@ -97,17 +97,21 @@ def test_wheel_ctor_kwargs():
     """
     tags = packaging.tags.parse_tag("cp36-cp36m-linux_x86_64")
     wheel = avail_wheels.Wheel(
-        filename="file",
+        filename="torch_cpu-1.2.0+computecanada-cp36-cp36m-linux_x86_64.whl",
         arch="avx",
         name="torch_cpu",
         version="1.2.0+computecanada",
         build="",
         tags=tags,
     )
-    assert wheel.filename == "file"
+    assert wheel.filename == "torch_cpu-1.2.0+computecanada-cp36-cp36m-linux_x86_64.whl"
     assert wheel.arch == "avx"
     assert wheel.name == "torch_cpu"
+    assert wheel.namelower == "torch_cpu"
+    assert wheel.canonical_name == "torch-cpu"
+    assert wheel.loose_version == packaging.version.Version("1.2.0+computecanada")
     assert wheel.version == "1.2.0"
+    assert wheel.localversion == "computecanada"
     assert wheel.build == ""
     assert wheel.tags == tags
     assert wheel.python == "cp36"
@@ -125,11 +129,14 @@ def test_wheel_parse_tags():
         ("generic", "backports.functools_lru_cache-1.4-py2.py3-none-any.whl"),
         ("sse3", "Shapely-1.6.2.post1-cp35-cp35m-linux_x86_64.whl"),
         ("generic", "shiboken2-5.15.0-5.15.0-cp35.cp36.cp37.cp38-abi3-linux_x86_64.whl"),
+        ("avx2", "torch_scatter-2.1.2+torch210.computecanada-cp311-cp311-linux_x86_64.whl"),
     ]
     tags = {
         filenames[0][1]: {
             "arch": "avx2",
             "name": "netCDF4",
+            "namelower": "netcdf4",
+            "canonical_name": "netcdf4",
             "version": "1.3.1",
             "localversion": None,
             "build": "",
@@ -140,6 +147,8 @@ def test_wheel_parse_tags():
         filenames[1][1]: {
             "arch": "avx",
             "name": "tensorflow_cpu",
+            "namelower": "tensorflow_cpu",
+            "canonical_name": "tensorflow-cpu",
             "version": "1.6.0",
             "localversion": "computecanada",
             "build": "",
@@ -150,6 +159,8 @@ def test_wheel_parse_tags():
         filenames[2][1]: {
             "arch": "generic",
             "name": "backports.functools_lru_cache",
+            "namelower": "backports.functools_lru_cache",
+            "canonical_name": "backports-functools-lru-cache",
             "version": "1.4",
             "localversion": None,
             "build": "",
@@ -160,6 +171,8 @@ def test_wheel_parse_tags():
         filenames[3][1]: {
             "arch": "sse3",
             "name": "Shapely",
+            "namelower": "shapely",
+            "canonical_name": "shapely",
             "version": "1.6.2.post1",
             "localversion": None,
             "build": "",
@@ -170,11 +183,25 @@ def test_wheel_parse_tags():
         filenames[4][1]: {
             "arch": "generic",
             "name": "shiboken2",
+            "namelower": "shiboken2",
+            "canonical_name": "shiboken2",
             "version": "5.15.0",
             "localversion": None,
             "build": "5.15.0",
             "python": "cp35,cp36,cp37,cp38",
             "abi": "abi3",
+            "platform": "linux_x86_64",
+        },
+        filenames[5][1]: {
+            "arch": "avx2",
+            "name": "torch_scatter",
+            "namelower": "torch_scatter",
+            "canonical_name": "torch-scatter",
+            "version": "2.1.2",
+            "localversion": "torch210.computecanada",
+            "build": "",
+            "python": "cp311",
+            "abi": "cp311",
             "platform": "linux_x86_64",
         },
     }
@@ -184,6 +211,8 @@ def test_wheel_parse_tags():
         assert wheel.filename == file
         assert wheel.arch == tags[file]["arch"]
         assert wheel.name == tags[file]["name"]
+        assert wheel.namelower == tags[file]["namelower"]
+        assert wheel.canonical_name == tags[file]["canonical_name"]
         assert wheel.version == tags[file]["version"]
         assert wheel.localversion == tags[file]["localversion"]
         assert wheel.build == tags[file]["build"]
